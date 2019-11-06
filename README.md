@@ -57,10 +57,8 @@ Or
             
 ![image_6](docs/images/configuration/config_global_sec_6.PNG)
 
-Step 3: Setting up the IDP data
-
 **Step:3: Fill the required details of IDP and press apply and save the settings.**
 * Fill the required details of IDP and press apply and save the settings.
 
-docs/images/configuration/config_jenkins_7.png
+![image_6](docs/images/configuration/config_jenkins_7.png)
 
