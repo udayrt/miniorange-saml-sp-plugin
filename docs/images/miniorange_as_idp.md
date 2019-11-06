@@ -15,8 +15,8 @@ miniOrange Single Sign On (SSO) for Jenkins  miniOrange also act as IDP for Jenk
  ![image_2](/docs/images/miniorange_as_idp/miniorange_custom_app_3.png)
  
 Enter the following the textboxes.
-
-| ------------- |:-------------:|
+| Field  | URL | 
+| --- | --- |
 | Custom Application Name : | Any application Name | 
 | Audience URI :  | Root_URL/securityRealm/moSamlAuth | 
 | SP Entity ID  | Root_URL/securityRealm/moSamlAuth |  
@@ -30,8 +30,8 @@ Root_URL can be like: http://localhost:8080
 **Attribute Mapping:**
 * Select Add Attribute and enter following details.
 
-| ------------- |:-------------:|
 | Attribute Name | Attribute Value | 
+| --- | --- |
 | Username_attribute(Provided in Jenkins) | Username | 
 | Email_attribute(Provided in Jenkins) | E-mail Address | 
 
@@ -46,8 +46,6 @@ Root_URL can be like: http://localhost:8080
 ![image_5](/docs/images/miniorange_as_idp/miniorange_policy_6.png)
 
 * Save the app settings.
-
-![image_6](/docs/images/miniorange_as_idp/miniorange_app_save_7.png)
 
 ## Step 3: Copy IDP Metadata ##
 * From the Configured App list, search your application name you just added and click on the Metadata link.
