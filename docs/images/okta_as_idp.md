@@ -38,11 +38,16 @@ Save the app settings.
 * After creating and configuring the app go to the Assignment Tab in Okta.
 * Here we select the people and groups you want to give access to login through this app. Assign this to the people/group you would like to give access to.
 
+![image_4](/docs/images/okta_as_idp/okta_assignment_4.png)
 
-After assigning the people/groups to your app go to Sign On tab.
-Click on view setup instructions to get the SAML Login URL (Single Sign on URL), Single Logout URL, IDP Entity ID, and X.509 Certificate.
+* After assigning the people/groups to your app go to Sign On tab.
+* Click on view setup instructions to get the SAML Login URL (Single Sign on URL), Single Logout URL, IDP Entity ID, and X.509 Certificate.
 
+![image_5](/docs/images/okta_as_idp/okta_saml_idp_setup_instr_5.png)
+* Copy the required SAML Login URL (Single Sign on URL), Single Logout URL, IDP Entity ID, and X.509 Certificate.
 
-Copy the required SAML Login URL (Single Sign on URL), Single Logout URL, IDP Entity ID, and X.509 Certificate.
+![image_6](/docs/images/okta_as_idp/okta_setup_instructions_6.PNG)
 
-Paste the above URL and certificate in respective field area of Jenkins  Miniorange Saml Plugin.
+* Paste the above URL and certificate in respective field area of Jenkins Miniorange Saml Plugin.
+
+![image_7](/docs/images/okta_as_idp/config_jenkins_7.png)
