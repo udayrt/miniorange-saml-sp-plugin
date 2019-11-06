@@ -22,6 +22,7 @@ miniOrange Single Sign On (SSO) for Jenkins  miniOrange also act as IDP for Jenk
 | Audience URI | Root_URL/securityRealm/moSamlAuth |  
 | SP Entity ID | Root_URL/securityRealm/moSamlAuth |  
 | Name ID Format | username | 
+| Acs Url | Root_URL | 
 
 Root_URL can be like: http://localhost:8080
 
