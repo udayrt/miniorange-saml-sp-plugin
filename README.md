@@ -33,7 +33,7 @@ To download the miniorange saml SP plugin follow the path:
 * Open Manage Jenkins => Configure Global Security and set the Security Realm as miniorange SAML 2.0.
             Make sure that Enable Security checkbox is checked.
 
-// image 
+// image ![Image description](link-to-image)
 **Step 3: Setting up the IDP data**
 
 * Fill the required details of IDP and press apply and save the settings.
