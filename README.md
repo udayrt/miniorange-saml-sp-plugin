@@ -14,9 +14,9 @@ Supported IDP’s:
 
 We support all known IdPs - 
 ADFS, Azure AD, Bitium, Centrify, Google Apps, IBM, NetIQ, Okta, OneLogin,  OpenAM, Oracle,  Ping,  RSA,  Salesforce, Shibboleth, SimpleSAMLphp, WSO2, etc.
-In addition to the above, [miniOrange](/docs/miniorange_as_idp.md) also provides On-Premise IDP. 
+In addition to the above, [miniOrange](/docs/images/miniorange_as_idp.md) also provides On-Premise IDP. 
 
-[Okta SetupGuidelines](/docs/okta_as_idp.md)
+[Okta SetupGuidelines](/docs/images/okta_as_idp.md)
 
  SAML Single Sign-on (SSO) acts as a SAML 2.0 Service Provider and securely authenticate users with your SAML 2.0 Identity Provider.
 
