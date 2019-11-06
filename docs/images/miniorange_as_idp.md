@@ -14,15 +14,19 @@ miniOrange Single Sign On (SSO) for Jenkins  miniOrange also act as IDP for Jenk
  
  ![image_2](/docs/images/miniorange_as_idp/miniorange_custom_app_3.png)
  
-Enter the following the textboxes.
-| Field  | URL | 
-| --- | --- |
-| Custom Application Name : | Any application Name | 
-| Audience URI :  | Root_URL/securityRealm/moSamlAuth | 
-| SP Entity ID  | Root_URL/securityRealm/moSamlAuth |  
-| Name ID Format | username | 
-| ACS URL : | Root_URL | 
+* Enter the following the textboxes.
 
+| Custom Application Name | Custom Application Name | 
+| Audience URI | Root_URL/securityRealm/moSamlAuth | 
+| SP Entity ID | Root_URL/securityRealm/moSamlAuth |  
+| Name ID Format | username | 
+| ACS URL | Root_URL | 
+
+| Custom Application Name | Custom Application Name | 
+| Audience URI | Root_URL/securityRealm/moSamlAuth |
+| SP Entity ID | Root_URL/securityRealm/moSamlAuth | 
+| Name ID Format | username | 
+| ACS URL | Root_URL |
 Root_URL can be like: http://localhost:8080
 
 ![image_3](/docs/images/miniorange_as_idp/miniorange_app_edit_4.png)
