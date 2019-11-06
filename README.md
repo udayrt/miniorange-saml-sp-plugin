@@ -25,7 +25,7 @@ In addition to the above, miniOrange also provides On-Premise IDP.
 To download the miniorange saml SP plugin follow the path:
 * Login to your Jenkins.
 * Go to Manage Jenkins option from the left pane, and open Manage Plugins tab.
-![jenkins_manage_plugin](/docs/images/Manage Jenkins Jenkins.png)
+![jenkins_manage_plugin](docs/images/Manage Jenkins  Jenkins .png)
 * Search for ‘Miniorange saml’ in the available tab.
 * Download and install with a restart.
 
