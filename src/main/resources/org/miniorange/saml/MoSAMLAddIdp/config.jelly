@@ -8,6 +8,9 @@
     <f:entry title="Single Sign On URL:" field="ssoUrl" >
         <f:textbox placeholder="Enter Single Sign On URL" />
     </f:entry>
+
+
+
     <f:entry title="NameID Format:" field="nameIdFormat" >
         <select name="nameIdFormat">
             <option value="urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified">urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified</option>
@@ -22,11 +25,11 @@
     </f:entry>
 
     <f:entry title="Username Attribute:" field="usernameAttribute" >
-        <f:textbox placeholder="Enter Username Attribute" />
+        <f:textbox placeholder="NameID" disabled="true"/>
     </f:entry>
 
     <f:entry title="Email Attribute:" field="emailAttribute" >
-        <f:textbox placeholder="Enter Email Attribute" />
+        <f:textbox placeholder="NameID" disabled="true" />
     </f:entry>
     <f:entry title="${%Do you want to create users?}" field="userCreate">
       <f:checkbox/>

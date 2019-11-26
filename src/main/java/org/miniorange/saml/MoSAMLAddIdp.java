@@ -1,10 +1,14 @@
 package org.miniorange.saml;
+//import jenkins.model.JenkinsLocationConfiguration;
 import org.acegisecurity.Authentication;
+//import hudson.XmlFile;
+//import hudson.security.Permission;
 import hudson.Extension;
 import hudson.model.Descriptor;
 import hudson.model.User;
 import hudson.security.HudsonPrivateSecurityRealm;
 import hudson.security.SecurityRealm;
+//import hudson.tasks.Mailer.UserProperty;
 import hudson.util.FormValidation;
 import jenkins.model.Jenkins;
 import jenkins.security.SecurityListener;
@@ -19,6 +23,9 @@ import org.pac4j.core.client.RedirectAction.RedirectType;
 import org.pac4j.saml.profile.SAML2Profile;
 import org.w3c.dom.Document;
 import org.apache.commons.io.IOUtils;
+
+//import javax.servlet.http.HttpServletRequest;
+//import javax.servlet.http.HttpServletResponse;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.servlet.ServletException;
@@ -26,9 +33,14 @@ import javax.servlet.http.HttpSession;
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
+/*import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.DosFileAttributes;*/
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.DosFileAttributes;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -39,6 +51,7 @@ import org.xml.sax.InputSource;
 import org.acegisecurity.AuthenticationException;
 import org.acegisecurity.BadCredentialsException;
 import hudson.tasks.Mailer;
+//import hudson.XmlFile;
 public class MoSAMLAddIdp extends SecurityRealm{
 
     private static final Logger LOGGER = Logger.getLogger(MoSAMLAddIdp.class.getName());
@@ -81,14 +94,16 @@ public class MoSAMLAddIdp extends SecurityRealm{
             this.emailAttribute = emailAttribute;
         }
 
-        //this.sslUrl = sslUrl;
+       // this.sslUrl = sslUrl;
         try {
             generateIDPMetadataFile();
             generateUserMetadataFile();
         }
         catch (IOException e) {
-            LOGGER.fine("Error during generating IDP metadata file");
+            //LOGGER.fine("Error during generating IDP metadata file");
         }
+
+
 
     }
     @Override
@@ -101,9 +116,9 @@ public class MoSAMLAddIdp extends SecurityRealm{
 
             super.doLogout(req, rsp);
         } catch (ServletException e) {
-            e.printStackTrace();
+            //LOGGER.fine("Throwing Servlet Exception during logout");
         } catch (IOException e) {
-            e.printStackTrace();
+            //LOGGER.fine("Throwing IOException during logout");
         }
     }
 
@@ -121,6 +136,7 @@ public class MoSAMLAddIdp extends SecurityRealm{
                 if(StringUtils.isNotBlank(errorMessage))
                 {
                     html = html.replace("<input type=\"hidden\" />", errorMessage);
+                    //System.out.println(html);
                 }
                 rsp.getWriter().println(html);
             }
@@ -137,10 +153,13 @@ public class MoSAMLAddIdp extends SecurityRealm{
             if (StringUtils.isNotBlank(username)) {
                 final User user_jenkin = User.getById(username,false);
                 if (user_jenkin != null) {
+                    //LOGGER.fine("User exist with username = " + username);
                     try {
                         new MoHudsonPrivateSecurityRealm().authenticate(username, password);
+                        //LOGGER.fine("Valid User Password");
                         isValidUser = Boolean.TRUE;
                     } catch (Exception e) {
+                        //LOGGER.fine("InValid User Password");
                         isValidUser = Boolean.FALSE;
                     }
                     if(isValidUser)
@@ -177,8 +196,15 @@ public class MoSAMLAddIdp extends SecurityRealm{
     private String customLoginTemplate(StaplerResponse response, String errorMessage) throws IOException {
         response.setContentType("text/html;charset=UTF-8");
         String html = IOUtils.toString(MoSAMLAddIdp.class.getResourceAsStream(LOGIN_TEMPLATE_PATH), "UTF-8");
+        //LOGGER.fine("Html : "+html);
+        //System.out.println(errorMessage);
+
+        //LOGGER.fine("contains : "+html.contains("<input type=\"hidden\" />"));
         if (StringUtils.isNotBlank(errorMessage)) {
+            //System.out.println(errorMessage);
+
             html = html.replace("<input type=\"hidden\" />", errorMessage);
+           // System.out.println(html);
         }
         return html;
     }
@@ -186,8 +212,10 @@ public class MoSAMLAddIdp extends SecurityRealm{
         RedirectAction action = null;
         action = new MoSAMLLoginRedirectAction(getMoSAMLPluginSettings(), request, response).get();
         if (RedirectType.SUCCESS == action.getType()) {
+           // LOGGER.fine("SUCCESS Content: " + action.getContent());
             return HttpResponses.literalHtml(action.getContent());
         } else if (RedirectType.REDIRECT == action.getType()) {
+           // LOGGER.fine("REDIRECT Location : " + action.getLocation());
             return HttpResponses.redirectTo(action.getLocation());
         } else {
             throw new IllegalStateException("Invalid response" + action.getType());
@@ -214,38 +242,41 @@ public class MoSAMLAddIdp extends SecurityRealm{
         String samlResponse = request.getParameter("SAMLResponse");
         MoSAMLPluginSettings settings = getMoSAMLPluginSettings();
         String xmlData = new String(Base64.getDecoder().decode(samlResponse));
+        //LOGGER.fine("Decoded String = "+xmlData);
         try {
             String username="";
             String email="";
-            DocumentBuilderFactory documentBuilderFactory=DocumentBuilderFactory.newInstance();
-            documentBuilderFactory.setNamespaceAware(true);
-            DocumentBuilder db = documentBuilderFactory.newDocumentBuilder();
+            DocumentBuilder db = DocumentBuilderFactory.newInstance().newDocumentBuilder();
             InputSource is = new InputSource();
             is.setCharacterStream(new StringReader(xmlData));
             Document doc = db.parse(is);
-            NodeList node1 = doc.getElementsByTagNameNS("*","Subject");
+            Element element = doc.getDocumentElement();
+           // NodeList nodes = element.getChildNodes();
+            NodeList node1 = doc.getElementsByTagName("saml:Subject");
             for(int i=0; i<node1.getLength(); i++)
             {
                 Node User_Node = node1.item(i);
                 if(User_Node.getNodeType() == Node.ELEMENT_NODE)
                 {
                     Element UserNameElement = (Element) User_Node;
-                 username = UserNameElement.getElementsByTagNameNS("*","NameID").item(0).getTextContent();
-                     LOGGER.fine(username);
+                     username = UserNameElement.getElementsByTagName("saml:NameID").item(0).getTextContent();
                 }
             }
-            NodeList node2 = doc.getElementsByTagNameNS("*","AttributeStatement");
+            /*NodeList node2 = doc.getElementsByTagName("saml:AttributeStatement");
             for(int i=0; i<node2.getLength(); i++)
             {
                 Node Email_Node = node2.item(i);
                 if(Email_Node.getNodeType() == Node.ELEMENT_NODE)
                 {
                     Element studentElement1 = (Element) Email_Node;
-                   email= studentElement1.getElementsByTagNameNS("*","Attribute").item(0).getTextContent();
-                     LOGGER.fine(email);
+                     email= studentElement1.getElementsByTagName("saml:Attribute").item(0).getTextContent();
 
                 }
-            }
+            }*/
+            /*//NodeList subnodes=nodes.item(3).getChildNodes();
+            //String username=subnodes.item(1).getTextContent();
+            //NodeList subnodes2=subnodes.item(4).getChildNodes();
+            //String email=subnodes2.item(0).getTextContent();*/
             if (StringUtils.isNotBlank(username)) {
                 User user = User.getById(username, false);
                 if (user != null) {
@@ -265,8 +296,10 @@ public class MoSAMLAddIdp extends SecurityRealm{
                 } else {
                     try {
                         if(settings.getUserCreate()){
+                            //System.out.println(getUserMetadataFilePath());
                             File file = new File( getUserMetadataFilePath());
                             Path p = Paths.get(getUserMetadataFilePath());
+                            // DosFileAttributes dos = Files.readAttributes(p, DosFileAttributes.class);
                             Files.setAttribute(p, "dos:hidden", false);
                             if(file.exists())
                             {
@@ -278,8 +311,9 @@ public class MoSAMLAddIdp extends SecurityRealm{
                                 }
                                 scanner.close();
                             if(noOfUsers<=9) {
+                               // System.out.println("inside if");
                                 User new_user=User.getById(username, true);
-                                new_user.addProperty(new Mailer.UserProperty(email));
+                                new_user.addProperty(new Mailer.UserProperty(username));
                                 HttpSession session = request.getSession(false);
                                 if (session != null) {
                                     session.invalidate();}
@@ -293,6 +327,7 @@ public class MoSAMLAddIdp extends SecurityRealm{
                                 SecurityListener.fireLoggedIn(new_user.getId());
                                 {
                                     FileWriter fr = new FileWriter(file, false);
+                                    LOGGER.fine("file writerr openend");
                                     BufferedWriter br = new BufferedWriter(fr);
                                     br.write(String.valueOf(noOfUsers+1));
                                     br.close();
@@ -303,32 +338,96 @@ public class MoSAMLAddIdp extends SecurityRealm{
 
                             }
                             else {
+                                LOGGER.fine("premium error");
                                 String errorMessage = "<div class=\"alert alert-danger\">Upgrade to Premium</div><br>";
+                                //String html = customLoginTemplate(response,errorMessage);
                                 return doMoLogin(request, response,errorMessage);}
+                                //return HttpResponses.redirectTo(getErrorUrl());
                             }
                             else {
+                                LOGGER.fine("Invalid username error");
                                 String errorMessage = "<div class=\"alert alert-danger\">Invalid username</div><br>";
+                                //String html = customLoginTemplate(response,errorMessage);
                                 return doMoLogin(request, response,errorMessage);
                             }
                         } else {
+                            LOGGER.fine("No new user create");
                             String errorMessage = "<div class=\"alert alert-danger\">User creation not allowed!</div><br>";
                             return doMoLogin(request, response,errorMessage);
+                            //return HttpResponses.redirectTo(getErrorUrl());
                         }
                     } catch (Exception ex) {
-                    ex.printStackTrace();
+                        //ex.printStackTrace();
+                       // LOGGER.fine("catch error"+ex);
                         String errorMessage = "<div class=\"alert alert-danger\">Error occurred .Please contact administrator.</div><br>";
+                        //String html = customLoginTemplate(response,errorMessage);
+                       // LOGGER.fine("error occured "+ex);
                         return doMoLogin(request, response,errorMessage);
+                        //return HttpResponses.redirectTo(getErrorUrl());
                     }
                 }
             } else {
+                LOGGER.fine("Username is blank error");
                 String errorMessage = "<div class=\"alert alert-danger\">Username is blank.</div><br>";
                 return doMoLogin(request, response,errorMessage);
+               // return HttpResponses.redirectTo(getErrorUrl());
             }
         } catch (Exception ex) {
+            LOGGER.fine("Invalid response");
             String errorMessage = "<div class=\"alert alert-danger\">Response is invalid.</div><br>";
             return doMoLogin(request, response,errorMessage);
+            //return HttpResponses.redirectTo(getErrorUrl());
         }
     }
+
+    /*private Document convertStringToXMLDocument(String xmlString)
+    {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+
+        DocumentBuilder builder = null;
+        try
+        {
+            builder = factory.newDocumentBuilder();
+
+            Document doc = builder.parse(new InputSource(new StringReader(xmlString)));
+            return doc;
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+        return null;
+    }*/
+
+    /*private Boolean changeUserEmail(User user, Object attribute) {
+        if (attribute == null) {
+            LOGGER.warning("No Email found against attribute " + getEmailAttribute() + " for user : " + user.getId());
+            return false;
+        }
+
+        String email = null;
+        if (attribute instanceof String) {
+            email = (String) attribute;
+        } else if (attribute instanceof List) {
+            email = (String) ((List<?>) attribute).get(0);
+        } else {
+            LOGGER.warning("No Email found against attribute " + getEmailAttribute() + " for user : " + user.getId());
+            return false;
+        }
+
+        if (StringUtils.isBlank(email)) {
+            LOGGER.warning("Email address is blank");
+        }
+
+        try {
+            if (user != null && StringUtils.isNotBlank(email)) {
+                UserProperty userProperty = user.getProperty(UserProperty.class);
+            }
+        } catch (Exception e) {
+            LOGGER.fine("Error during updating email address");
+        }
+        return false;
+    }*/
 
     private List<GrantedAuthority> getGrantedAuthorities(SAML2Profile saml2Profile) {
         List<GrantedAuthority> authorities = new ArrayList<GrantedAuthority>();
@@ -337,6 +436,7 @@ public class MoSAMLAddIdp extends SecurityRealm{
     }
 
     private void createSession(StaplerRequest request) {
+     //   LOGGER.fine("Create Session method is called");
         HttpSession session = request.getSession(false);
         if (session != null) {
             session.invalidate();
@@ -428,11 +528,13 @@ public class MoSAMLAddIdp extends SecurityRealm{
                 fr.close();
                 file.setWritable(true);
                 Path p = Paths.get(getUserMetadataFilePath());
+               // DosFileAttributes dos = Files.readAttributes(p, DosFileAttributes.class);
                 Files.setAttribute(p, "dos:hidden", true);
+                //System.out.println("file is made hidden+!!!");
             }
 
         } catch (IOException e) {
-            e.printStackTrace();
+           // LOGGER.fine("error during generation of user metadata file.");
         }
     }
 
@@ -440,7 +542,7 @@ public class MoSAMLAddIdp extends SecurityRealm{
         String xml;
         /*if (StringUtils.isNotEmpty(sslUrl)) {
             xml = "<md:EntityDescriptor entityID=\"##ENTITYID##\" ID=\"_58eb6efc-1f19-431b-8146-3fef71f908d0\" xmlns:md=\"urn:oasis:names:tc:SAML:2.0:metadata\"><md:IDPSSODescriptor protocolSupportEnumeration=\"urn:oasis:names:tc:SAML:2.0:protocol\" WantAuthnRequestsSigned=\"##AUTHNREQUESTSIGNED##\"><md:KeyDescriptor use=\"signing\"><KeyInfo xmlns=\"http://www.w3.org/2000/09/xmldsig#\"><X509Data><X509Certificate>##SIGNATURE##</X509Certificate></X509Data></KeyInfo></md:KeyDescriptor><md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat><md:SingleSignOnService Binding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect\" Location=\"##SSOURL##\" /><md:SingleSignOnService Binding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST\" Location=\"##SSOURL##\"/><md:SingleLogoutService Binding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect\" Location=\"##SLOURL##\"/><md:SingleLogoutService Binding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST\" Location=\"##SLOURL##\"/></md:IDPSSODescriptor></md:EntityDescriptor>";
-        }*/  {
+        } else */{
             xml = "<md:EntityDescriptor entityID=\"##ENTITYID##\" ID=\"_58eb6efc-1f19-431b-8146-3fef71f908d0\" xmlns:md=\"urn:oasis:names:tc:SAML:2.0:metadata\"><md:IDPSSODescriptor protocolSupportEnumeration=\"urn:oasis:names:tc:SAML:2.0:protocol\" WantAuthnRequestsSigned=\"##AUTHNREQUESTSIGNED##\"><md:KeyDescriptor use=\"signing\"><KeyInfo xmlns=\"http://www.w3.org/2000/09/xmldsig#\"><X509Data><X509Certificate>##SIGNATURE##</X509Certificate></X509Data></KeyInfo></md:KeyDescriptor><md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat><md:SingleSignOnService Binding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect\" Location=\"##SSOURL##\" /><md:SingleSignOnService Binding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST\" Location=\"##SSOURL##\"/></md:IDPSSODescriptor></md:EntityDescriptor>";
         }
         xml = xml.replace("##ENTITYID##", getIdpEntityId());
@@ -450,7 +552,22 @@ public class MoSAMLAddIdp extends SecurityRealm{
         //xml = xml.replace("##SLOURL##", getSslUrl());
         return xml;
     }
-  @Extension
+
+   /* public String getUserNameFromSamlProfile(SAML2Profile saml2Profile) {
+        Object usernameAttribute = saml2Profile.getAttribute(getUsernameAttribute());
+        if (usernameAttribute instanceof String) {
+            return (String) usernameAttribute;
+        }
+
+        if (usernameAttribute instanceof List) {
+            return (String) ((List<?>) usernameAttribute).get(0);
+        }
+
+        return saml2Profile.getId();
+    }*/
+
+
+    @Extension
     public static final class DescriptorImpl extends Descriptor<SecurityRealm> {
 
         public DescriptorImpl() {
@@ -490,7 +607,7 @@ public class MoSAMLAddIdp extends SecurityRealm{
             return FormValidation.ok();
         }
 
-     /*   public FormValidation doCheckSsLUrl(@QueryParameter String sslUrl) {
+       /* public FormValidation doCheckSsLUrl(@QueryParameter String sslUrl) {
             if (StringUtils.isEmpty(sslUrl)) {
                 return FormValidation.ok();
             }
@@ -509,19 +626,19 @@ public class MoSAMLAddIdp extends SecurityRealm{
             return FormValidation.ok();
         }
 
-        public FormValidation doCheckUsernameAttribute(@QueryParameter String usernameAttribute) {
+      /*  public FormValidation doCheckUsernameAttribute(@QueryParameter String usernameAttribute) {
             if (StringUtils.isEmpty(usernameAttribute)) {
                 return FormValidation.warning("Username Can not kept blank");
             }
             return FormValidation.ok();
-        }
+        }*/
 
-        public FormValidation doCheckEmailAttribute(@QueryParameter String emailAttribute) {
+       /* public FormValidation doCheckEmailAttribute(@QueryParameter String emailAttribute) {
             if (StringUtils.isEmpty(emailAttribute)) {
                 return FormValidation.warning("Email Address Can not kept blank");
             }
             return FormValidation.ok();
-        }
+        }*/
 
     }
 }

@@ -8,14 +8,13 @@ public class MoSAMLPluginSettings {
 
     private String idpEntityId;
     private String ssoUrl;
-    //private String sslUrl;
     private String x509Certificate;
     // Information related to Attribute Mapping
     private String usernameAttribute;
     private String emailAttribute;
    private final Boolean userCreate;
    private int noOfUsers=0;
-    public MoSAMLPluginSettings (String idpEntityId, String ssoUrl, String x509Certificate, String usernameAttribute, String emailAttribute,Boolean userCreate,int noOfUsers) {
+    public MoSAMLPluginSettings (String idpEntityId, String ssoUrl,  String x509Certificate, String usernameAttribute, String emailAttribute,Boolean userCreate,int noOfUsers) {
         this.idpEntityId = idpEntityId;
         this.ssoUrl = ssoUrl;
         //this.sslUrl = sslUrl;
@@ -33,8 +32,8 @@ public class MoSAMLPluginSettings {
     public String getSsoUrl() {
         return ssoUrl;
     }
-
-   /* public String getSslUrl() {
+/*
+    public String getSslUrl() {
         return sslUrl;
     }*/
 
