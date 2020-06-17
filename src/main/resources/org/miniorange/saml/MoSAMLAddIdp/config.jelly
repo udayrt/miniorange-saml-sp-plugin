@@ -31,9 +31,6 @@
     <f:entry title="Email Attribute:" field="emailAttribute" >
         <f:textbox placeholder="NameID" disabled="true" />
     </f:entry>
-    <f:entry title="${%Do you want to create users?}" field="userCreate">
-      <f:checkbox/>
-    </f:entry>
     </f:section>
 
 </j:jelly>
