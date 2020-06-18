@@ -30,6 +30,7 @@ import org.opensaml.xml.encryption.DecryptionException;
 import org.opensaml.xml.encryption.EncryptedKey;
 import org.opensaml.xml.encryption.InlineEncryptedKeyResolver;
 import org.opensaml.xml.io.*;
+import javax.xml.XMLConstants;
 import org.opensaml.xml.security.credential.Credential;
 
 import org.opensaml.xml.security.keyinfo.StaticKeyInfoCredentialResolver;
@@ -94,8 +95,8 @@ public class MoSAMLUtils {
         LOGGER.fine("Decoding Response..");
         String xml = new String(Base64.decode(encodedResponse), "UTF-8");
         DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
+        documentBuilderFactory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
         documentBuilderFactory.setNamespaceAware(true);
-        /** Ignore comments while reading Response : XML Canonicalization Vulnerability  : https://www.kb.cert.org/vuls/id/475445 */
         documentBuilderFactory.setIgnoringComments(true);
         disableExternalEntityParsing(documentBuilderFactory);
         DocumentBuilder docBuilder = documentBuilderFactory.newDocumentBuilder();
