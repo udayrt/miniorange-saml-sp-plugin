@@ -4,8 +4,6 @@ import org.apache.commons.lang3.StringUtils;
 
 import org.apache.xml.security.signature.XMLSignature;
 import org.joda.time.DateTime;
-import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.StaplerResponse;
 
 import org.opensaml.saml2.core.*;
 import org.opensaml.xml.signature.X509Certificate;
@@ -71,9 +69,8 @@ public class MoSAMLManager {
             if (samlResponse.getAssertions() != null && samlResponse.getAssertions().size() > 0) {
                 assertion = samlResponse.getAssertions().get(0);
             } else {
-                LOGGER.fine(settings.getX509Certificate()+settings.getPrivateSPCertificate()+"#####");
                 assertion = MoSAMLUtils.decryptAssertion(samlResponse.getEncryptedAssertions().get(0),
-                        settings.getX509Certificate(), settings.getPrivateSPCertificate());
+                        settings.getPublicSPCertificate(), settings.getPrivateSPCertificate());
             }
             LOGGER.fine(String.valueOf(assertion));
 
@@ -86,7 +83,8 @@ public class MoSAMLManager {
             MoSAMLException t = null;
             Boolean verified = Boolean.FALSE;
             try {
-                verified = verifyCertificate(samlResponse, assertion, settings.getX509Certificate());
+                verified = verifyCertificate(samlResponse, assertion, settings.getX509PublicCertificate());
+                LOGGER.fine("Verified Certificates:"+verified);
             } catch (MoSAMLException e) {
                 t = e;
             }
@@ -138,6 +136,8 @@ public class MoSAMLManager {
         // Destination is Optional field so verify only if exist.
         LOGGER.fine("Verifying Destination if present in SAML Response");
         String destInResponse = response.getDestination();
+        LOGGER.fine("destInResponse: "+destInResponse+"acsURL: "+acsUrl);
+
         if (StringUtils.isBlank(destInResponse) || StringUtils.equals(destInResponse, acsUrl)) {
             return;
         }
@@ -150,8 +150,10 @@ public class MoSAMLManager {
 
         private void verifyRecipient(Assertion assertion, String acsUrl) {
         LOGGER.fine("Verifying Recipient if present in SAML Response");
+
         String recipientInResponse = assertion.getSubject().getSubjectConfirmations().get(0)
                 .getSubjectConfirmationData().getRecipient();
+            LOGGER.fine("destInResponse: "+recipientInResponse);
         if (StringUtils.isBlank(recipientInResponse) || StringUtils.equals(recipientInResponse, acsUrl) ) {
             return;
         }
@@ -220,7 +222,7 @@ public class MoSAMLManager {
                 if (assertion.isSigned()) {
                     return MoSAMLUtils.verifyCertificate(assertion, x509Certificate);
                 }
-                LOGGER.fine("Error occured while verifing the certificate");
+                LOGGER.fine("Error occurred while verifying the certificate");
             } catch (CertificateException e) {
                 MoSAMLException.SAMLErrorCode errorCode = MoSAMLException.SAMLErrorCode.INVALID_CERTIFICATE;
                 MoSAMLException samlexception = new MoSAMLException(errorCode.getMessage(),
@@ -330,44 +332,102 @@ public class MoSAMLManager {
         errorMsg.append(found);
         return errorMsg.toString();
     }
-    public void createAuthnRequestAndRedirect(StaplerRequest request, StaplerResponse response) {
-        try {
-            LOGGER.fine("Creating Authentication Request and rediectig user to Idp for authentication");
-            MoSAMLUtils.doBootstrap();
+   public void createAuthnRequestAndRedirect(HttpServletRequest request, HttpServletResponse response) {
+       try {
+           LOGGER.fine("Creating Authentication Request and rediecting user to Idp for authentication");
+           MoSAMLUtils.doBootstrap();
+           AuthnRequest authnRequest = MoSAMLUtils.buildAuthnRequest(settings.getSPEntityID(),
+                   settings.getSpAcsUrl(), settings.getSsoUrl(), settings.getNameIDFormat());
+           if (StringUtils.equals(settings.getSsoBindingType(), "HttpPost")) {
+               LOGGER.fine("HTTP-POST Binding selected for SSO");
+               if (settings.getSignedRequest()) {
+                   authnRequest = (AuthnRequest) MoSAMLUtils.signHttpPostRequest(authnRequest,
+                           settings.getPublicSPCertificate(), settings.getPrivateSPCertificate());
+               }
+               String encodedAuthnRequest = MoSAMLUtils.base64EncodeRequest(authnRequest, true);
+               String form = createHttpPostRequestForm(settings.getSsoUrl(), encodedAuthnRequest);
+               response.getOutputStream().write(form.getBytes(StandardCharsets.UTF_8));
+               response.getOutputStream().close();
+               return;
+           } else {
+               LOGGER.fine("HTTP-Redirect Binding selected for SSO");
+               String encodedAuthnRequest = MoSAMLUtils.base64EncodeRequest(authnRequest, false);
+               LOGGER.fine("encodedAuthnRequest: "+encodedAuthnRequest);
+               String urlForSignature = createRequestQueryParamsForSignature(encodedAuthnRequest,"loginRequest");
+               String signature = MoSAMLUtils.signHttpRedirectRequest(urlForSignature,
+                       XMLSignature.ALGO_ID_SIGNATURE_RSA_SHA256, settings.getPublicSPCertificate(),
+                       settings.getPrivateSPCertificate());
+               String redirectUrl = StringUtils.EMPTY;
+               if (settings.getSignedRequest()) {
+                   redirectUrl = createRedirectURL(settings.getSsoUrl(),encodedAuthnRequest, "loginRequest",
+                           XMLSignature.ALGO_ID_SIGNATURE_RSA_SHA256, signature, false);
+               } else {
+                   redirectUrl = createUnSignedRedirectURL(settings.getSsoUrl(), encodedAuthnRequest,
+                            "loginRequest",false);
 
-            AuthnRequest authnRequest = MoSAMLUtils.buildAuthnRequest(settings.getSPEntityID(),
-                    settings.getSpAcsUrl(), settings.getSsoUrl(), settings.getNameIDFormat(),"none");
-            {
-                LOGGER.fine("HTTP-Redirect Binding selected for SSO");
-                String encodedAuthnRequest = MoSAMLUtils.base64EncodeRequest(authnRequest, false);
-
-                String urlForSignature = createRequestQueryParamsForSignature(encodedAuthnRequest);
-
-                String signature = MoSAMLUtils.signHttpRedirectRequest(urlForSignature,
-
-                        XMLSignature.ALGO_ID_SIGNATURE_RSA_SHA256, settings.getX509Certificate(),
-                        settings.getPrivateSPCertificate());
-
-                String redirectUrl = StringUtils.EMPTY;
-
-                 {
-                    redirectUrl = createUnSignedRedirectURL(settings.getSsoUrl(), encodedAuthnRequest, false);
-
-                }
-                httpRedirect(response, redirectUrl);
-                // response.sendRedirect(redirectUrl);
-            }
-        } catch (Throwable t) {
-            LOGGER.fine("An unknown error occurred while creating the AuthnRequest.");
-            throw new MoSAMLException(MoSAMLException.SAMLErrorCode.UNKNOWN);
-        }
-    }
+               }
+               httpRedirect(response, redirectUrl);
+               // response.sendRedirect(redirectUrl);
+           }
+       } catch (Throwable t) {
+           LOGGER.fine("An unknown error occurred while creating the AuthnRequest."+ t);
+           throw new MoSAMLException(MoSAMLException.SAMLErrorCode.UNKNOWN);
+       }
+   }
     public static void httpRedirect(HttpServletResponse response, String redirectUrl) throws IOException {
         LOGGER.fine("Redirecting user to " + redirectUrl);
         response.sendRedirect(redirectUrl);
     }
-    private String createUnSignedRedirectURL(String url, String samlRequestOrResponse,
-                                             Boolean isResponse) throws UnsupportedEncodingException {
+
+   private String createUnSignedRedirectURL(String url, String samlRequestOrResponse, String relayState,
+                                            Boolean isResponse) throws UnsupportedEncodingException {
+       StringBuilder builder = new StringBuilder(url);
+       if (StringUtils.contains(url, "?") && !(StringUtils.endsWith(url, "?") || StringUtils.endsWith(url, "&"))) {
+           builder.append("&");
+       } else if (!StringUtils.contains(url, "?")) {
+           builder.append("?");
+       }
+       if (isResponse) {
+           builder.append(createResponseQueryParamsForSignature(samlRequestOrResponse, relayState));
+       } else {
+           builder.append(createRequestQueryParamsForSignature(samlRequestOrResponse, relayState));
+       }
+       return builder.toString();
+   }
+    private String createResponseQueryParamsForSignature(String httpRedirectResponse, String relayState)
+            throws UnsupportedEncodingException {
+        LOGGER.fine("Creating response query parameter for signature");
+        StringBuffer urlForSignature = new StringBuffer();
+        urlForSignature.append(MoSAMLUtils.SAML_RESPONSE_PARAM).append("=")
+                .append(URLEncoder.encode(httpRedirectResponse, StandardCharsets.UTF_8.toString()));
+        urlForSignature.append("&").append(MoSAMLUtils.RELAY_STATE_PARAM).append("="+relayState);
+         {
+            urlForSignature.append(URLEncoder.encode("/", StandardCharsets.UTF_8.toString()));
+        }
+        return urlForSignature.toString();
+    }
+
+    private String createRequestQueryParamsForSignature(String httpRedirectRequest, String relayState)
+            throws UnsupportedEncodingException {
+        LOGGER.fine("Creating request query parameter for signature");
+        StringBuffer urlForSignature = new StringBuffer();
+        //LOGGER.fine("encoded Authentication request: "+httpRedirectRequest);
+        urlForSignature.append(MoSAMLUtils.SAML_REQUEST_PARAM).append("=")
+                .append(URLEncoder.encode(httpRedirectRequest, StandardCharsets.UTF_8.toString()));
+        urlForSignature.append("&").append(MoSAMLUtils.RELAY_STATE_PARAM).append("=");
+        if (StringUtils.isNotBlank(relayState)) {
+            urlForSignature.append(URLEncoder.encode(relayState, StandardCharsets.UTF_8.toString()));
+        } else {
+            urlForSignature.append(URLEncoder.encode("/", StandardCharsets.UTF_8.toString()));
+        }
+        LOGGER.fine(urlForSignature.toString());
+        return urlForSignature.toString();
+    }
+
+
+
+    private String createRedirectURL(String url, String samlRequestOrResponse, String relayState, String sigAlgo,
+                                     String signature, Boolean isResponse) throws UnsupportedEncodingException {
         StringBuilder builder = new StringBuilder(url);
         if (StringUtils.contains(url, "?") && !(StringUtils.endsWith(url, "?") || StringUtils.endsWith(url, "&"))) {
             builder.append("&");
@@ -375,35 +435,26 @@ public class MoSAMLManager {
             builder.append("?");
         }
         if (isResponse) {
-            builder.append(createResponseQueryParamsForSignature(samlRequestOrResponse));
+            builder.append(createResponseQueryParamsForSignature(samlRequestOrResponse, relayState));
         } else {
-            builder.append(createRequestQueryParamsForSignature(samlRequestOrResponse));
+            builder.append(createRequestQueryParamsForSignature(samlRequestOrResponse, relayState));
         }
+        builder.append("&").append(MoSAMLUtils.SIGNATURE_ALGO_PARAM).append("=")
+                .append(URLEncoder.encode(sigAlgo, "UTF-8")).append("&").append(MoSAMLUtils.SIGNATURE_PARAM).append("=")
+                .append(URLEncoder.encode(signature, "UTF-8"));
         return builder.toString();
     }
-    private String createResponseQueryParamsForSignature(String httpRedirectResponse)
-            throws UnsupportedEncodingException {
-        LOGGER.fine("Creating response query parameter for signature");
-        StringBuffer urlForSignature = new StringBuffer();
-        urlForSignature.append(MoSAMLUtils.SAML_RESPONSE_PARAM).append("=")
-                .append(URLEncoder.encode(httpRedirectResponse, StandardCharsets.UTF_8.toString()));
-        urlForSignature.append("&").append(MoSAMLUtils.RELAY_STATE_PARAM).append("=");
-         {
-            urlForSignature.append(URLEncoder.encode("/", StandardCharsets.UTF_8.toString()));
-        }
-        return urlForSignature.toString();
+
+    private String createHttpPostRequestForm(String ssoUrl, String encodedRequest) {
+        Map<String, Object> context = new HashMap();
+        context.put("ssoUrl", ssoUrl);
+        context.put("encodedRequest", MoSAMLUtils.htmlEncode(encodedRequest));
+        //context.put("relayState",MoSAMLUtils.htmlEncode(relayState));
+       String  form="";
+       // String form = this.renderer.renderFragment(settings.getSAMLPostRequest(), context);
+       // LOGGER.fine("result = " + form);
+        return form;
     }
-    private String createRequestQueryParamsForSignature(String httpRedirectRequest)
-            throws UnsupportedEncodingException {
-        LOGGER.fine("Creating request query parameter for signature");
-        StringBuffer urlForSignature = new StringBuffer();
-        urlForSignature.append(MoSAMLUtils.SAML_REQUEST_PARAM).append("=")
-                .append(URLEncoder.encode(httpRedirectRequest, StandardCharsets.UTF_8.toString()));
-        urlForSignature.append("&").append(MoSAMLUtils.RELAY_STATE_PARAM).append("=");
-         {
-            urlForSignature.append(URLEncoder.encode("/", StandardCharsets.UTF_8.toString()));
-        }
-        return urlForSignature.toString();
-    }
+
 
 }

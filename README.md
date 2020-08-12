@@ -5,7 +5,6 @@ Features of Jenkins Saml SP Plugin
 
 * Simple and easy-to-use [ FREE ]
 * Supports both SSO and Jenkins’ own login at the same time [FREE]
-* Auto-create[only 10]/ Auto-login users in OctoberCMS [ FREE ]
 * Auto-redirect to IdP[ PREMIUM ]
 * Back-door Login [ PREMIUM ]
 * Single Logout [ PREMIUM ]
@@ -38,7 +37,6 @@ To download the miniorange saml SP plugin follow the path:
 
 Or
 **Manual Configuration:**
-* Download the [miniorange_saml.hpi](https://drive.google.com/file/d/16GcJvM_BJ0kPZ9KgGZo0UnX4c19oL0LM/view?usp=sharing) plugin file.
 * Login to your Jenkins.
 * Go to Manage Jenkins option from the left pane, and open Manage Plugins tab.
 * Go to the advanced tab and upload the hpi file.

@@ -1,10 +1,14 @@
 package org.miniorange.saml;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.jsoup.Jsoup;
 import org.opensaml.DefaultBootstrap;
+import org.opensaml.common.SignableSAMLObject;
 import org.opensaml.saml2.core.Assertion;
 import org.opensaml.saml2.core.Response;
 import org.opensaml.xml.ConfigurationException;
+import org.opensaml.xml.security.keyinfo.KeyInfoGeneratorFactory;
+import org.opensaml.xml.security.keyinfo.KeyInfoGeneratorManager;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
@@ -39,6 +43,7 @@ import org.opensaml.xml.signature.*;
 import org.opensaml.xml.util.Base64;
 import org.opensaml.xml.util.XMLHelper;
 import org.opensaml.xml.validation.ValidationException;
+import org.xml.sax.SAXException;
 
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.*;
@@ -109,30 +114,26 @@ public class MoSAMLUtils {
         Response response = (Response) xmlObj;
         return response;
     }
-    public static AuthnRequest buildAuthnRequest(String issuer, String acsUrl, String destination, String nameIdFormat, String authnContextClass) {
-        LOGGER.fine("Building Authentication Request");
-        AuthnRequest authnRequest = new AuthnRequestBuilder().buildObject(SAMLConstants.SAML20P_NS,
-                AuthnRequest.DEFAULT_ELEMENT_LOCAL_NAME, "samlp");
-        DateTime issueInstant = new DateTime();
-        authnRequest.setID(generateRandomString());
-        authnRequest.setVersion(SAMLVersion.VERSION_20);
-        authnRequest.setIssueInstant(issueInstant);
-        authnRequest.setProtocolBinding(SAMLConstants.SAML2_POST_BINDING_URI);
-        authnRequest.setIssuer(buildIssuer(issuer));
-        authnRequest.setAssertionConsumerServiceURL(acsUrl);
-        authnRequest.setDestination(destination);
-        if(org.apache.commons.lang3.StringUtils.isNotBlank(authnContextClass) && !authnContextClass.equals("None")){
-            authnRequest.setRequestedAuthnContext(buildRequestedAuthnContext(authnContextClass));
-        }
 
-        //Create NameIDPolicy
-        NameIDPolicyBuilder nameIdPolicyBuilder = new NameIDPolicyBuilder();
-        NameIDPolicy nameIdPolicy = nameIdPolicyBuilder.buildObject();
-        nameIdPolicy.setFormat(nameIdFormat);
-        nameIdPolicy.setAllowCreate(true);
-        authnRequest.setNameIDPolicy(nameIdPolicy);
-        return authnRequest;
-    }
+  public static AuthnRequest buildAuthnRequest(String issuer, String acsUrl, String destination, String nameIdFormat) {
+      LOGGER.fine("Building Authentication Request");
+      AuthnRequest authnRequest = new AuthnRequestBuilder().buildObject(SAMLConstants.SAML20P_NS,
+              AuthnRequest.DEFAULT_ELEMENT_LOCAL_NAME, "samlp");
+      DateTime issueInstant = new DateTime();
+      authnRequest.setID(generateRandomString());
+      authnRequest.setVersion(SAMLVersion.VERSION_20);
+      authnRequest.setIssueInstant(issueInstant);
+      authnRequest.setProtocolBinding(SAMLConstants.SAML2_POST_BINDING_URI);
+      authnRequest.setIssuer(buildIssuer(issuer));
+      authnRequest.setAssertionConsumerServiceURL(acsUrl);
+      authnRequest.setDestination(destination);
+      NameIDPolicyBuilder nameIdPolicyBuilder = new NameIDPolicyBuilder();
+      NameIDPolicy nameIdPolicy = nameIdPolicyBuilder.buildObject();
+      nameIdPolicy.setFormat(nameIdFormat);
+      nameIdPolicy.setAllowCreate(true);
+      authnRequest.setNameIDPolicy(nameIdPolicy);
+      return authnRequest;
+  }
     private static Issuer buildIssuer(String issuerValue) {
         LOGGER.fine("Building Issuer");
         Issuer issuer = new IssuerBuilder().buildObject(SAMLConstants.SAML20_NS, Issuer.DEFAULT_ELEMENT_LOCAL_NAME,
@@ -140,24 +141,12 @@ public class MoSAMLUtils {
         issuer.setValue(issuerValue);
         return issuer;
     }
-    public static RequestedAuthnContext buildRequestedAuthnContext(String authnContextClassRefValue){
-        /* AuthnContextClass */
-        AuthnContextClassRefBuilder authnContextClassRefBuilder = new AuthnContextClassRefBuilder();
-        AuthnContextClassRef authnContextClassRef = authnContextClassRefBuilder.buildObject("urn:oasis:names:tc:SAML:2.0:assertion", "AuthnContextClassRef", "saml");
-        authnContextClassRef.setAuthnContextClassRef(authnContextClassRefValue);
 
-        /* RequestedAuthnContext */
-        RequestedAuthnContextBuilder requestedAuthnContextBuilder = new RequestedAuthnContextBuilder();
-        RequestedAuthnContext requestedAuthnContext = requestedAuthnContextBuilder.buildObject();
-        requestedAuthnContext.setComparison(AuthnContextComparisonTypeEnumeration.EXACT);
-        requestedAuthnContext.getAuthnContextClassRefs().add(authnContextClassRef);
-
-        return requestedAuthnContext;
-    }
 
     public static Assertion decryptAssertion(EncryptedAssertion encryptedAssertion, String publicKey, String privateKey)
             throws CertificateException, InvalidKeySpecException, NoSuchAlgorithmException, DecryptionException {
         LOGGER.fine("Decrypting Assertion.");
+        //LOGGER.fine(publicKey+"\n"+privateKey);
         StaticKeyInfoCredentialResolver keyInfoCredentialResolver = new StaticKeyInfoCredentialResolver(
                 getCredential(publicKey, privateKey));
         Decrypter decrypter = new Decrypter(null, keyInfoCredentialResolver, new InlineEncryptedKeyResolver());
@@ -171,7 +160,7 @@ public class MoSAMLUtils {
     }
     public static Boolean verifyCertificate(SignableXMLObject response, String certificate)
             throws ValidationException, CertificateException, InvalidKeySpecException, NoSuchAlgorithmException {
-        LOGGER.fine("Varifing Certificate");
+        LOGGER.fine("verifying Certificate");
         if (response.isSigned()) {
             SAMLSignatureProfileValidator profileValidator = new SAMLSignatureProfileValidator();
             profileValidator.validate(response.getSignature());
@@ -207,7 +196,7 @@ public class MoSAMLUtils {
             x509Credential.setPrivateKey(privateKey);
         }
         Credential credential = x509Credential;
-        LOGGER.fine("credential = " + credential);
+        //LOGGER.fine("credential = " + credential);
         return credential;
     }
     public static String serializePublicCertificate(String certificate) {
@@ -294,37 +283,36 @@ public class MoSAMLUtils {
             return Boolean.FALSE;
         }
     }
-    public static String base64EncodeRequest(XMLObject request, Boolean isHttpPostBinding) throws Exception {
-        LOGGER.fine("Encoding Sign Request with Base64 encoder.");
-        Marshaller marshaller = Configuration.getMarshallerFactory().getMarshaller(request);
-        LOGGER.fine("Encoding Sign Request with Base64 encoder.1");
-        Element authDOM = marshaller.marshall(request);
-        LOGGER.fine("Encoding Sign Request with Base64 encoder.2");
-        // DOM to string
-        StringWriter requestWriter = new StringWriter();
-        LOGGER.fine("Encoding Sign Request with Base64 encoder.3");
-        XMLHelper.writeNode(authDOM, requestWriter);
-        LOGGER.fine("Encoding Sign Request with Base64 encoder.4");
-        String requestMessage = requestWriter.toString();
-        LOGGER.fine("HTTP-Redirect Binding selected for SSO1");
-        if (isHttpPostBinding) {
-            String authnRequestStr = Base64.encodeBytes(requestMessage.getBytes(StandardCharsets.UTF_8), Base64.DONT_BREAK_LINES);
-            return authnRequestStr;
-        }
-        // compressing
-        Deflater deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, true);
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DeflaterOutputStream deflaterOutputStream = new DeflaterOutputStream(byteArrayOutputStream, deflater);
-        deflaterOutputStream.write(requestMessage.getBytes(StandardCharsets.UTF_8));
-        deflaterOutputStream.close();
-        LOGGER.fine("HTTP-Redirect Binding selected for SSO2");
-        byteArrayOutputStream.close();
-        String encodedRequestMessage = Base64.encodeBytes(byteArrayOutputStream.toByteArray(), Base64.DONT_BREAK_LINES);
-        return encodedRequestMessage;
-    }
+
+   public static String base64EncodeRequest(XMLObject request, Boolean isHttpPostBinding) throws Exception {
+       LOGGER.fine("Encoding Sign Request with Base64 encoder.");
+       Marshaller marshaller = Configuration.getMarshallerFactory().getMarshaller(request);
+       Element authDOM = marshaller.marshall(request);
+
+       // DOM to string
+       StringWriter requestWriter = new StringWriter();
+       XMLHelper.writeNode(authDOM, requestWriter);
+       String requestMessage = requestWriter.toString();
+
+       if (isHttpPostBinding) {
+           String authnRequestStr = Base64.encodeBytes(requestMessage.getBytes(StandardCharsets.UTF_8), Base64.DONT_BREAK_LINES);
+           return authnRequestStr;
+       }
+       // compressing
+       Deflater deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, true);
+       ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+       DeflaterOutputStream deflaterOutputStream = new DeflaterOutputStream(byteArrayOutputStream, deflater);
+       deflaterOutputStream.write(requestMessage.getBytes(StandardCharsets.UTF_8));
+       deflaterOutputStream.close();
+       byteArrayOutputStream.close();
+       String encodedRequestMessage = Base64.encodeBytes(byteArrayOutputStream.toByteArray(), Base64.DONT_BREAK_LINES);
+       return encodedRequestMessage;
+   }
+
+
     public static String signHttpRedirectRequest(String requestQueryString, String sigAlgo, String pubicKey,
                                                  String privateKey) throws Exception {
-        LOGGER.fine("Signig Http Redirect Request called ");
+        LOGGER.fine("Signing Http Redirect Request called ");
         StringBuilder builder = new StringBuilder(requestQueryString);
         builder.append("&").append(SIGNATURE_ALGO_PARAM).append("=").append(URLEncoder.encode(sigAlgo, "UTF-8"));
         Signature signature = Signature.getInstance("SHA256withRSA");
@@ -337,7 +325,6 @@ public class MoSAMLUtils {
         // "UTF-8").trim());
         return signatureBase64encodedString;
     }
-
     private static void disableExternalEntityParsing(DocumentBuilderFactory dbf){
         LOGGER.info("Disabling External Entity Parsing from DocumentBuilderFactory");
         String FEATURE = null;
@@ -398,4 +385,79 @@ public class MoSAMLUtils {
             return Boolean.FALSE;
         }
     }
+
+    private static Status buildStatus(String statusCodeValue) {
+        LOGGER.fine("Building Status");
+        StatusCode statusCode = new StatusCodeBuilder().buildObject(SAMLConstants.SAML20P_NS,
+                StatusCode.DEFAULT_ELEMENT_LOCAL_NAME, "samlp");
+        statusCode.setValue(statusCodeValue);
+        Status status = new StatusBuilder().buildObject(SAMLConstants.SAML20P_NS, Status.DEFAULT_ELEMENT_LOCAL_NAME,
+                "samlp");
+        status.setStatusCode(statusCode);
+        return status;
+    }
+
+   public static SignableSAMLObject signHttpPostRequest(SignableSAMLObject request, String pubicKey, String privateKey)
+           throws Exception {
+       LOGGER.fine("Signing HTTP Post Request. ");
+       org.opensaml.xml.signature.Signature signature = (org.opensaml.xml.signature.Signature) Configuration
+               .getBuilderFactory().getBuilder(org.opensaml.xml.signature.Signature.DEFAULT_ELEMENT_NAME)
+               .buildObject(org.opensaml.xml.signature.Signature.DEFAULT_ELEMENT_NAME);
+
+       // Pass certificate type to get credentials
+       Credential credential = getCredential(pubicKey, privateKey);
+
+       signature.setSigningCredential(credential);
+       signature.setCanonicalizationAlgorithm(SignatureConstants.ALGO_ID_C14N_EXCL_OMIT_COMMENTS);
+
+       KeyInfoGeneratorManager keyInfoGeneratorManager = Configuration.getGlobalSecurityConfiguration()
+               .getKeyInfoGeneratorManager().getDefaultManager();
+       KeyInfoGeneratorFactory keyInfoGeneratorFactory = keyInfoGeneratorManager.getFactory(credential);
+       KeyInfo keyInfo = keyInfoGeneratorFactory.newInstance().generate(credential);
+
+       signature.setKeyInfo(keyInfo);
+       String signatureAlgo = SignatureConstants.ALGO_ID_SIGNATURE_RSA_SHA256;
+       signature.setSignatureAlgorithm(signatureAlgo);
+
+       request.setSignature(signature);
+
+       // Marshalling signableXmlObject
+       MarshallerFactory marshallerFactory = Configuration.getMarshallerFactory();
+       Marshaller marshaller = marshallerFactory.getMarshaller(request);
+       marshaller.marshall(request);
+
+       Signer.signObject(signature);
+
+       return request;
+
+   }
+
+    public static String htmlEncode(String s) {
+        if (org.apache.commons.lang3.StringUtils.isNotBlank(s)) {
+            StringBuffer encodedString = new StringBuffer("");
+            char[] chars = s.toCharArray();
+            for (char c : chars) {
+                if (c == '<') {
+                    encodedString.append("&lt;");
+                } else if (c == '>') {
+                    encodedString.append("&gt;");
+                } else if (c == '\'') {
+                    encodedString.append("&apos;");
+                } else if (c == '"') {
+                    encodedString.append("&quot;");
+                } else if (c == '&') {
+                    encodedString.append("&amp;");
+                } else {
+                    encodedString.append(c);
+                }
+            }
+            return encodedString.toString();
+        }
+        return org.apache.commons.lang3.StringUtils.EMPTY;
+    }
+    public static String generateRandomAlphaNumericKey(int bytes) {
+        String randomString = RandomStringUtils.random(bytes, true, true);
+        return randomString;
+    }
+
 }

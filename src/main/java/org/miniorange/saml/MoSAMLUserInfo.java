@@ -16,7 +16,7 @@ public class MoSAMLUserInfo implements UserDetails {
     }
     @Override
     public GrantedAuthority[] getAuthorities() {
-        return new GrantedAuthority[0];
+        return Arrays.copyOf(grantedAuthorities, grantedAuthorities.length);
     }
 
     @Override

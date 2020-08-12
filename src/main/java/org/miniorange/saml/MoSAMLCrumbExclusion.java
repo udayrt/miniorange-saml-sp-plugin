@@ -8,9 +8,12 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.logging.Logger;
 
 @Extension
 public class MoSAMLCrumbExclusion extends CrumbExclusion {
+    private static final Logger LOGGER = Logger.getLogger(MoSAMLCrumbExclusion.class.getName());
+
     @Override
     public boolean process(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws IOException, ServletException {
         String pathInfo = request.getPathInfo();
@@ -25,11 +28,9 @@ public class MoSAMLCrumbExclusion extends CrumbExclusion {
         if (pathInfo == null) {
             return false;
         }
-        if (
-                pathInfo.indexOf(MoSAMLAddIdp.MO_SAML_SP_AUTH_URL) > 0
-            || pathInfo.indexOf(MoSAMLAddIdp.MO_SAML_SSO_FORCE_STOP) > 0
-            || pathInfo.indexOf(MoSAMLAddIdp.MO_SAML_JENKINS_LOGIN_ACTION) > 0
-        ) {
+        if ((pathInfo.indexOf(MoSAMLAddIdp.MO_SAML_JENKINS_LOGIN_ACTION, 1) > -1)
+                || (pathInfo.indexOf(MoSAMLAddIdp.MO_SAML_SSO_FORCE_STOP, 1) > -1)
+                ||(pathInfo.indexOf(MoSAMLAddIdp.MO_SAML_SP_AUTH_URL, 1) > -1)) {
             return true;
         } else {
             return false;
