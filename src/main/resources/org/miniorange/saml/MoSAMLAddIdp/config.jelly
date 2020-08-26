@@ -41,11 +41,11 @@
             </f:entry>
 
             <f:entry title="Single Logout  URL:" field="sslUrl"  >
-                <f:textbox default="Available in premium version" disabled="true" />
+                <f:textbox placeholder="Available in premium version" disabled="true" />
             </f:entry>
 
             <f:entry name="nameIDFormat" title="Name ID Format:" field="nameIDFormat" >
-                <select name="nameIDFormat">
+                <select name="nameIDFormat" style="width: 100%;">
                     <f:option value="urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified" selected="${instance.nameIDFormat == 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'}">urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified</f:option>
                     <f:option value="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress" selected="${instance.nameIDFormat == 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress'}">urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</f:option>
                     <f:option value="urn:oasis:names:tc:SAML:1.1:nameid-format:persistent" selected="${instance.nameIDFormat == 'urn:oasis:names:tc:SAML:1.1:nameid-format:persistent'}">urn:oasis:names:tc:SAML:1.1:nameid-format:persistent</f:option>
@@ -75,7 +75,7 @@
             </f:entry>
 
             <f:entry title="Full Name Attribute" field="fullnameAttribute"  >
-                <f:textbox default="Available in premium version" disabled="true"  />
+                <f:textbox placeholder="Available in premium version" disabled="true"  />
             </f:entry>
 
             <f:entry title="${%Apply regex Pattern to the UserName: }" field="enableRegexPattern">
@@ -95,7 +95,7 @@
 
 
             <f:entry title="Assign group to new Users" field="newUserGroup">
-                <f:textbox default="Available in premium version" disabled="true" />
+                <f:textbox placeholder="Available in premium version" disabled="true" />
             </f:entry>
 
         </f:section>

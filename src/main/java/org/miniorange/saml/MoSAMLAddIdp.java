@@ -1,5 +1,6 @@
 package org.miniorange.saml;
 
+import hudson.Util;
 import org.acegisecurity.Authentication;
 import hudson.Extension;
 import hudson.model.Descriptor;
@@ -72,6 +73,8 @@ public class MoSAMLAddIdp extends SecurityRealm {
 
     private static final String LOGIN_TEMPLATE_PATH = "/templates/mosaml_login_page_template.html";
     private static final String AUTO_REDIRECT_TO_IDP_TEMPLATE_PATH = "/templates/AutoRedirectToIDPTemplate.html";
+    private static final String REFERER_ATTRIBUTE = MoSAMLAddIdp.class.getName() + ".referer";
+
 
 
     private final String idpEntityId;
@@ -167,6 +170,9 @@ public class MoSAMLAddIdp extends SecurityRealm {
     }
 
     public HttpResponse doMoLogin(final StaplerRequest request, final StaplerResponse response, String errorMessage) {
+        String referer= request.getReferer();
+        String redirectOnFinish = calculateSafeRedirect(referer);
+        request.getSession().setAttribute(REFERER_ATTRIBUTE, redirectOnFinish);
         return (req, rsp, node) -> {
             rsp.setContentType("text/html;charset=UTF-8");
             String html = IOUtils.toString(MoSAMLAddIdp.class.getResourceAsStream(LOGIN_TEMPLATE_PATH), "UTF-8");
@@ -177,9 +183,11 @@ public class MoSAMLAddIdp extends SecurityRealm {
         };
     }
 
-
+    @RequirePOST
     public void doMoLoginAction(final StaplerRequest request, final StaplerResponse response) {
-
+        String referer = (String) request.getSession().getAttribute(REFERER_ATTRIBUTE);
+        String redirectOnFinish = calculateSafeRedirect(referer);
+        recreateSession(request);
         try {
             {
                 String username = request.getParameter("j_username");
@@ -213,7 +221,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
                             SecurityContextHolder.getContext().setAuthentication(tokenInfo);
                             SecurityListener.fireAuthenticated(userInfo);
                             SecurityListener.fireLoggedIn(user_jenkin.getId());
-                            response.sendRedirect(getBaseUrl());
+                            response.sendRedirect(redirectOnFinish);
                             return;
                         }
                     }
@@ -232,6 +240,20 @@ public class MoSAMLAddIdp extends SecurityRealm {
         }
     }
 
+    private String calculateSafeRedirect( String referer) {
+        String redirectURL;
+        String rootUrl = getBaseUrl();
+        {
+            if (referer != null && (referer.startsWith(rootUrl) || Util.isSafeToRedirectTo(referer))) {
+                redirectURL = referer;
+            } else {
+                redirectURL = rootUrl;
+            }
+        }
+        LOGGER.fine("Safe URL redirection: " + redirectURL);
+        return redirectURL;
+    }
+
     private String customLoginTemplate(StaplerResponse response, String errorMessage) throws IOException {
         response.setContentType("text/html;charset=UTF-8");
         String html = IOUtils.toString(MoSAMLAddIdp.class.getResourceAsStream(LOGIN_TEMPLATE_PATH), "UTF-8");
@@ -245,7 +267,11 @@ public class MoSAMLAddIdp extends SecurityRealm {
         return html;
     }
 
-    public void doMoSamlLogin(final StaplerRequest request, final StaplerResponse response) {
+    public void doMoSamlLogin(final StaplerRequest request, final StaplerResponse response, @Header("Referer") final String referer) {
+        recreateSession(request);
+        String redirectOnFinish = calculateSafeRedirect(referer);
+        request.getSession().setAttribute(REFERER_ATTRIBUTE, redirectOnFinish);
+
         LOGGER.fine("in doMoSamlLogin");
         MoSAMLManager moSAMLManager = new MoSAMLManager(getMoSAMLPluginSettings());
         moSAMLManager.createAuthnRequestAndRedirect(request, response);
@@ -266,6 +292,10 @@ public class MoSAMLAddIdp extends SecurityRealm {
 
     @RequirePOST
     public void doMoSAMLSingleSignOnForceStop(final StaplerRequest request, final StaplerResponse response) {
+        HttpSession session= request.getSession(false);
+        if(session!=null){
+            session.invalidate();
+        }
         LOGGER.fine("Enable doMoSAMLSingleSignOnForceStop from doPost");
         String username = request.getParameter("username");
         username = MoSAMLUtils.sanitizeText(username);
@@ -476,6 +506,9 @@ public class MoSAMLAddIdp extends SecurityRealm {
 
     @RequirePOST
     public HttpResponse doMoSamlAuth(final StaplerRequest request, final StaplerResponse response) throws IOException {
+        String referer = (String) request.getSession().getAttribute(REFERER_ATTRIBUTE);
+        String redirectUrl = getBaseUrl();
+        recreateSession(request);
         LOGGER.fine(" Reading SAML Response");
         String username = "";
         String email = "";
@@ -515,10 +548,10 @@ public class MoSAMLAddIdp extends SecurityRealm {
                         String errorMessage = "<div class=\"alert alert-danger\">User creation Failed. Please view logs for more information.<br>";
                         return doMoLogin(request, response, errorMessage);
                     } else {
-                        return createSessionAndLoginUser(newUser,request,response, true,settings);
+                        return createSessionAndLoginUser(newUser,request,response, true,settings, redirectUrl);
                     }
                 } else {
-                    return createSessionAndLoginUser(user,request,response,false,settings);
+                    return createSessionAndLoginUser(user,request,response,false,settings,redirectUrl);
                 }
 
             } else if(settings.getLoginType().equals("emailLogin") && StringUtils.isNotBlank(email)){
@@ -540,10 +573,10 @@ public class MoSAMLAddIdp extends SecurityRealm {
                         String errorMessage = "<div class=\"alert alert-danger\">User creation Failed.<br>";
                         return doMoLogin(request, response, errorMessage);
                     } else {
-                        return createSessionAndLoginUser(newUser,request,response,true,settings);
+                        return createSessionAndLoginUser(newUser,request,response,true,settings,redirectUrl);
                     }
                 } else {
-                   return createSessionAndLoginUser(user,request,response,false,settings);
+                   return createSessionAndLoginUser(user,request,response,false,settings,redirectUrl);
 
                 }
 
@@ -637,7 +670,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
        return username;
 
     }
-    public  HttpResponse createSessionAndLoginUser(User user, StaplerRequest request,StaplerResponse response, Boolean newUserCreated,MoSAMLPluginSettings settings){
+    public  HttpResponse createSessionAndLoginUser(User user, StaplerRequest request,StaplerResponse response, Boolean newUserCreated,MoSAMLPluginSettings settings, String redirectUrl){
         if (user != null) {
             LOGGER.fine("User exists for Username: " + user.getId());
 
@@ -665,7 +698,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
             SecurityContextHolder.getContext().setAuthentication(tokenInfo);
             SecurityListener.fireAuthenticated(userInfo);
             SecurityListener.fireLoggedIn(user.getId());
-           return HttpResponses.redirectTo(getBaseUrl());
+           return HttpResponses.redirectTo(redirectUrl);
 
         } else {
             LOGGER.fine("User does not exist.");
@@ -700,6 +733,20 @@ public class MoSAMLAddIdp extends SecurityRealm {
         } else {
             return emailAttribute;
         }
+    }
+    /**
+     * check if a request contains a session, if so, it invalidate the session and create new one to avoid session
+     * fixation.
+     * @param request request.
+     */
+    private void recreateSession(StaplerRequest request) {
+        HttpSession session = request.getSession(false);
+        if(session != null){
+            LOGGER.fine("Invalidate previous session");
+            // avoid session fixation
+            session.invalidate();
+        }
+        request.getSession(true);
     }
 
 
