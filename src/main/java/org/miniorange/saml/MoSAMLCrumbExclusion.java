@@ -30,14 +30,11 @@ public class MoSAMLCrumbExclusion extends CrumbExclusion {
 
     private boolean ignoreCrumbCheck(String pathInfo) {
         if (pathInfo!=null && (pathInfo.equals(MO_SAML_JENKINS_LOGIN_ACTION) || pathInfo.equals(MO_SAML_JENKINS_LOGIN_ACTION + "/"))) {
-            LOGGER.fine("Path Info: "+MO_SAML_JENKINS_LOGIN_ACTION);
             return true;
         }
        else if (pathInfo!=null && (pathInfo.equals(MO_SAML_SSO_FORCE_STOP) || pathInfo.equals(MO_SAML_SSO_FORCE_STOP + "/"))) {
-            LOGGER.fine("Path Info: "+MO_SAML_SSO_FORCE_STOP);
             return true;
         } else  if (pathInfo!=null && (pathInfo.equals(MO_SAML_SP_AUTH_URL) || pathInfo.equals(MO_SAML_SP_AUTH_URL + "/"))) {
-            LOGGER.fine("Path Info: "+MO_SAML_SSO_FORCE_STOP);
             return true;
         }else {
             LOGGER.fine("Invalid Request");
