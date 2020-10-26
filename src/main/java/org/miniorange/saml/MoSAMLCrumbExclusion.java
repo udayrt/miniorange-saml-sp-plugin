@@ -13,6 +13,10 @@ import java.util.logging.Logger;
 @Extension
 public class MoSAMLCrumbExclusion extends CrumbExclusion {
     private static final Logger LOGGER = Logger.getLogger(MoSAMLCrumbExclusion.class.getName());
+    private static final String MO_SAML_JENKINS_LOGIN_ACTION = "/" + MoSAMLAddIdp.MO_SAML_JENKINS_LOGIN_ACTION;
+    private static final String MO_SAML_SSO_FORCE_STOP = "/" + MoSAMLAddIdp.MO_SAML_SSO_FORCE_STOP;
+    private static final String MO_SAML_SP_AUTH_URL = "/" + MoSAMLAddIdp.MO_SAML_SP_AUTH_URL;
+
 
     @Override
     public boolean process(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws IOException, ServletException {
@@ -25,14 +29,18 @@ public class MoSAMLCrumbExclusion extends CrumbExclusion {
     }
 
     private boolean ignoreCrumbCheck(String pathInfo) {
-        if (pathInfo == null) {
-            return false;
-        }
-        if ((pathInfo.indexOf(MoSAMLAddIdp.MO_SAML_JENKINS_LOGIN_ACTION, 1) > -1)
-                || (pathInfo.indexOf(MoSAMLAddIdp.MO_SAML_SSO_FORCE_STOP, 1) > -1)
-                ||(pathInfo.indexOf(MoSAMLAddIdp.MO_SAML_SP_AUTH_URL, 1) > -1)) {
+        if (pathInfo!=null && (pathInfo.equals(MO_SAML_JENKINS_LOGIN_ACTION) || pathInfo.equals(MO_SAML_JENKINS_LOGIN_ACTION + "/"))) {
+            LOGGER.fine("Path Info: "+MO_SAML_JENKINS_LOGIN_ACTION);
             return true;
-        } else {
+        }
+       else if (pathInfo!=null && (pathInfo.equals(MO_SAML_SSO_FORCE_STOP) || pathInfo.equals(MO_SAML_SSO_FORCE_STOP + "/"))) {
+            LOGGER.fine("Path Info: "+MO_SAML_SSO_FORCE_STOP);
+            return true;
+        } else  if (pathInfo!=null && (pathInfo.equals(MO_SAML_SP_AUTH_URL) || pathInfo.equals(MO_SAML_SP_AUTH_URL + "/"))) {
+            LOGGER.fine("Path Info: "+MO_SAML_SSO_FORCE_STOP);
+            return true;
+        }else {
+            LOGGER.fine("Invalid Request");
             return false;
         }
     }

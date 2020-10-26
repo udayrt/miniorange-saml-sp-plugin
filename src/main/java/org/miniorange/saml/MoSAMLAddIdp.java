@@ -352,19 +352,25 @@ public class MoSAMLAddIdp extends SecurityRealm {
 
     public void doMospmetadata(final StaplerRequest request, final StaplerResponse response) {
         LOGGER.fine("Printing SP Metadata");
-        MoSAMLPluginSettings moSAMLPluginSettings = getMoSAMLPluginSettings();
-        String metadata = getMetadata(moSAMLPluginSettings);
-        LOGGER.fine(metadata);
-        try {
-            response.setHeader("Content-Disposition", "attachment; filename=\"sp_metadata.xml\"");
-            response.setHeader("Cache-Control", "max-age=0");
-            response.setHeader("Pragma", "");
-            response.setContentType(MediaType.APPLICATION_XML);
-            response.getOutputStream().write(metadata.getBytes(StandardCharsets.UTF_8));
-        } catch (Exception e) {
-            LOGGER.fine("An error occurred while downloading the metadata." + e);
+        HttpSession session=request.getSession(false);
+        if(session!=null){
+            MoSAMLPluginSettings moSAMLPluginSettings = getMoSAMLPluginSettings();
+            String metadata = getMetadata(moSAMLPluginSettings);
+            LOGGER.fine(metadata);
+            try {
+                response.setHeader("Content-Disposition", "attachment; filename=\"sp_metadata.xml\"");
+                response.setHeader("Cache-Control", "max-age=0");
+                response.setHeader("Pragma", "");
+                response.setContentType(MediaType.APPLICATION_XML);
+                response.getOutputStream().write(metadata.getBytes(StandardCharsets.UTF_8));
+            } catch (Exception e) {
+                LOGGER.fine("An error occurred while downloading the metadata." + e);
+            }
         }
-
+    else{
+            LOGGER.fine("Invalid Request");
+            return;
+        }
     }
     public  void doDownloadCertificate(final StaplerRequest request, final StaplerResponse response) throws Exception {
         LOGGER.fine("Downloading SP Certificate.");
