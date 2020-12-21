@@ -194,18 +194,18 @@ public class MoSAMLAddIdp extends SecurityRealm {
                 username = MoSAMLUtils.sanitizeText(username);
                 String password = request.getParameter("j_password");
                 password = MoSAMLUtils.sanitizeText(password);
-                Boolean isValidUser ;
+                Boolean isValidUser= Boolean.FALSE ;
                 String error = StringUtils.EMPTY;
                 if (StringUtils.isNotBlank(username)) {
                     final User user_jenkin = User.getById(username, false);
                     if (user_jenkin != null) {
                         LOGGER.fine("User exist with username = " + username);
                         try {
-                            new MoHudsonPrivateSecurityRealm().authenticate(username, password);
+                            HudsonPrivateSecurityRealm.Details details=user_jenkin.getProperty(HudsonPrivateSecurityRealm.Details.class);
+                            isValidUser= details.isPasswordCorrect(password);
                             LOGGER.fine("Valid User Password");
-                            isValidUser = Boolean.TRUE;
                         } catch (Exception e) {
-                            LOGGER.fine("InValid User Password");
+                            LOGGER.fine("InValid User Password"+e.getMessage());
                             isValidUser = Boolean.FALSE;
                         }
                         if (isValidUser) {
@@ -307,31 +307,30 @@ public class MoSAMLAddIdp extends SecurityRealm {
             return;
         }
         final User user_jenkin = User.getById(username, false);
-        if (user_jenkin != null) {
-            new MoHudsonPrivateSecurityRealm().authenticate(username, password);
-                try {
+        try {
+            HudsonPrivateSecurityRealm.Details details=user_jenkin.getProperty(HudsonPrivateSecurityRealm.Details.class);
+            Boolean  isValidUser= details.isPasswordCorrect(password);
+            if (user_jenkin != null && isValidUser) {
+                Jenkins.getInstanceOrNull().setSecurityRealm(new HudsonPrivateSecurityRealm(false));
+                JSONObject json = new JSONObject();
+                JSONObject success = new JSONObject();
+                success.put("Status", "SUCCESS");
+                success.put("Message", "Successfully disabled SSO");
+                json.put("Message", success);
+                response.setContentType(MediaType.APPLICATION_JSON);
+                response.setStatus(200);
+                response.getOutputStream().write(json.toString().getBytes());
+                response.getOutputStream().close();
+            }
+            else{
+                LOGGER.fine("User validation failed.");
+                sendError(response, HttpServletResponse.SC_UNAUTHORIZED, "UnAuthorize User");
+            }
+        } catch (Exception e) {
+            LOGGER.fine("Error Occurred");
+            sendError(response, HttpServletResponse.SC_FORBIDDEN, "Error occurred while processing request");
 
-                    Jenkins.getInstanceOrNull().setSecurityRealm(new HudsonPrivateSecurityRealm(false));
-                    JSONObject json = new JSONObject();
-                    JSONObject success = new JSONObject();
-                    success.put("Status", "SUCCESS");
-                    success.put("Message", "Successfully disabled SSO");
-                    json.put("Message", success);
-                    response.setContentType(MediaType.APPLICATION_JSON);
-                    response.setStatus(200);
-                    response.getOutputStream().write(json.toString().getBytes());
-                    response.getOutputStream().close();
-                } catch (Exception e) {
-                    LOGGER.fine("Error Occurred");
-                    sendError(response, HttpServletResponse.SC_FORBIDDEN, "Error occurred while processing request");
-
-                }
         }
-        else{
-            LOGGER.fine("User validation failed.");
-            sendError(response, HttpServletResponse.SC_UNAUTHORIZED, "UnAuthorize User");
-        }
-
     }
 
     private void sendError(StaplerResponse response, int errorCode, String errorMessage) {
