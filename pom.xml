@@ -16,7 +16,7 @@
         <connection>scm:git:git://github.com/jenkinsci/miniorange-saml-sp-plugin.git</connection>
         <developerConnection>scm:git:git@github.com:jenkinsci/miniorange-saml-sp-plugin.git</developerConnection>
         <url>https://github.com/jenkinsci/miniorange-saml-sp-plugin</url>
-        <tag>1.0.0</tag>
+        <tag>${scmTag}</tag>
     </scm>
 
     <properties>
