@@ -660,9 +660,11 @@ public class MoSAMLAddIdp extends SecurityRealm {
                 if (matcher.find()) {
                     username = org.apache.commons.lang3.StringUtils.EMPTY;
                     if (matcher.groupCount() > 0) {
-                        for (int i = 1; i <= matcher.groupCount(); i++) {
-                            username += matcher.group(i);
+                        StringBuffer buf = new StringBuffer();
+                        for (int i = 1; i <= matcher.groupCount(); ++i) {
+                            buf.append(matcher.group(i));
                         }
+                       username = buf.toString();
                     } else {
                         username = matcher.group();
                     }
