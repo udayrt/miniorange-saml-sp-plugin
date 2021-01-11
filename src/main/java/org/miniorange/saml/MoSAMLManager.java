@@ -283,7 +283,7 @@ public class MoSAMLManager {
             }
             catch (Exception e)
             {
-                error.getResolution();
+                LOGGER.fine(e.getMessage());
 
             }
             StringBuffer errorMsg = new StringBuffer(error.getResolution());
@@ -345,8 +345,7 @@ public class MoSAMLManager {
                            settings.getPublicSPCertificate(), settings.getPrivateSPCertificate());
                }
                String encodedAuthnRequest = MoSAMLUtils.base64EncodeRequest(authnRequest, true);
-               String form = createHttpPostRequestForm(settings.getSsoUrl(), encodedAuthnRequest);
-               response.getOutputStream().write(form.getBytes(StandardCharsets.UTF_8));
+               response.getOutputStream().write(encodedAuthnRequest.getBytes(StandardCharsets.UTF_8));
                response.getOutputStream().close();
                return;
            } else {
@@ -445,16 +444,13 @@ public class MoSAMLManager {
         return builder.toString();
     }
 
-    private String createHttpPostRequestForm(String ssoUrl, String encodedRequest) {
-        Map<String, Object> context = new HashMap();
-        context.put("ssoUrl", ssoUrl);
-        context.put("encodedRequest", MoSAMLUtils.htmlEncode(encodedRequest));
-        //context.put("relayState",MoSAMLUtils.htmlEncode(relayState));
-       String  form="";
-       // String form = this.renderer.renderFragment(settings.getSAMLPostRequest(), context);
-       // LOGGER.fine("result = " + form);
-        return form;
-    }
+//    private String createHttpPostRequestForm(String ssoUrl, String encodedRequest) {
+//        Map<String, Object> context = new HashMap();
+//        context.put("ssoUrl", ssoUrl);
+//        context.put("encodedRequest", MoSAMLUtils.htmlEncode(encodedRequest));
+//        String form = this.renderer.renderFragment(settings.getSAMLPostRequest(), context);
+//        return form;
+//    }
 
 
 }

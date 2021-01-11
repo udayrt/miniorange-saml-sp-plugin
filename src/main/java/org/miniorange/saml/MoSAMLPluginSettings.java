@@ -28,8 +28,8 @@ public class MoSAMLPluginSettings {
 
     private static final String PRIVATE_CERT_PATH = "/certificates/sp-key.key";
     private static final String PUBLIC_CERT_PATH = "/certificates/sp-certificate.crt";
-    public static String PRIVATE_CERTIFICATE = "";
-    public static String PUBLIC_CERTIFICATE = "";
+    private static  String PRIVATE_CERTIFICATE = "";
+    private static  String PUBLIC_CERTIFICATE = "";
     private static final Logger LOGGER = Logger.getLogger(MoSAMLManager.class.getName());
 
     static {

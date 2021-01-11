@@ -56,7 +56,7 @@ public class MoSAMLResponse
 
     public String toString()
     {
-        return "MoSAMLResponse{attributes=" + this.attributes + ", nameId=" + this.nameId + ", sessionIndex='" + this.sessionIndex + ", relayStateURL='" + this.relayStateURL + "}";
+        return "MoSAMLResponse{attributes=" + this.attributes + ", nameId=" + this.nameId + ", sessionIndex='" + this.sessionIndex + "}";
     }
 }
 

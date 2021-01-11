@@ -285,7 +285,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         return get().getRootUrl() + MO_SAML_JENKINS_LOGIN_ACTION;
     }
 
-    public String SpMetadataURL() {
+    public String spMetadataURL() {
         return get().getRootUrl() + MO_SAML_SP_METADATA_URL;
     }
 
@@ -308,10 +308,12 @@ public class MoSAMLAddIdp extends SecurityRealm {
         }
         final User user_jenkin = User.getById(username, false);
         try {
-            HudsonPrivateSecurityRealm.Details details=user_jenkin.getProperty(HudsonPrivateSecurityRealm.Details.class);
-            Boolean  isValidUser= details.isPasswordCorrect(password);
-            if (user_jenkin != null && isValidUser) {
-                Jenkins.getInstanceOrNull().setSecurityRealm(new HudsonPrivateSecurityRealm(false));
+            if (user_jenkin != null ) {
+                HudsonPrivateSecurityRealm.Details details=user_jenkin.getProperty(HudsonPrivateSecurityRealm.Details.class);
+                Boolean  isValidUser= details.isPasswordCorrect(password);
+                Jenkins j= Jenkins.getInstanceOrNull();
+                if (j!=null&& isValidUser)
+                    j.setSecurityRealm(new HudsonPrivateSecurityRealm(false));
                 JSONObject json = new JSONObject();
                 JSONObject success = new JSONObject();
                 success.put("Status", "SUCCESS");
@@ -319,18 +321,18 @@ public class MoSAMLAddIdp extends SecurityRealm {
                 json.put("Message", success);
                 response.setContentType(MediaType.APPLICATION_JSON);
                 response.setStatus(200);
-                response.getOutputStream().write(json.toString().getBytes());
+                response.getOutputStream().write(json.toString().getBytes(StandardCharsets.UTF_8));
                 response.getOutputStream().close();
             }
             else{
                 LOGGER.fine("User validation failed.");
                 sendError(response, HttpServletResponse.SC_UNAUTHORIZED, "UnAuthorize User");
             }
-        } catch (Exception e) {
-            LOGGER.fine("Error Occurred");
-            sendError(response, HttpServletResponse.SC_FORBIDDEN, "Error occurred while processing request");
-
         }
+           catch (IOException e)
+           {
+               LOGGER.fine(e.getMessage());
+           }
     }
 
     private void sendError(StaplerResponse response, int errorCode, String errorMessage) {
@@ -342,7 +344,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
             json.put("error", error);
             response.setContentType(MediaType.APPLICATION_JSON);
             response.setStatus(errorCode);
-            response.getOutputStream().write(json.toString().getBytes());
+            response.getOutputStream().write(json.toString().getBytes(StandardCharsets.UTF_8));
             response.getOutputStream().close();
         } catch (JSONException | IOException e) {
             LOGGER.fine("An error occurred while sending json response" + e);
@@ -511,7 +513,6 @@ public class MoSAMLAddIdp extends SecurityRealm {
 
     @RequirePOST
     public HttpResponse doMoSamlAuth(final StaplerRequest request, final StaplerResponse response) throws IOException {
-        String referer = (String) request.getSession().getAttribute(REFERER_ATTRIBUTE);
         String redirectUrl = getBaseUrl();
         recreateSession(request);
         LOGGER.fine(" Reading SAML Response");
@@ -665,7 +666,6 @@ public class MoSAMLAddIdp extends SecurityRealm {
                     } else {
                         username = matcher.group();
                     }
-                    LOGGER.fine("Username after applying regex: " + username);
                 }
             } catch (Exception e) {
                 LOGGER.fine("Can't sign in regex pattern exception occured" + e);
@@ -692,7 +692,6 @@ public class MoSAMLAddIdp extends SecurityRealm {
             LOGGER.fine("UserDetails"+details);
 
             GrantedAuthority[] authorities= details.getAuthorities();
-            LOGGER.fine(authorities.toString());
             List<GrantedAuthority>authorityList= new ArrayList<>();
             for (GrantedAuthority authority : authorities) {
 

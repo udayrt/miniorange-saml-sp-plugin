@@ -274,14 +274,17 @@ public class MoSAMLUtils {
     public static Boolean isValidCertificate(String certificate) {
         LOGGER.fine("Validating Certificate");
         certificate = serializePublicCertificate(certificate);
+        Boolean isCertificateValid=Boolean.FALSE;
         try {
             CertificateFactory cf = CertificateFactory.getInstance("X.509");
             java.security.cert.X509Certificate cert = (java.security.cert.X509Certificate) cf
                     .generateCertificate(new ByteArrayInputStream(certificate.getBytes(StandardCharsets.UTF_8)));
-            return Boolean.TRUE;
+                if (cert!=null)
+                    isCertificateValid=Boolean.TRUE;
         } catch (CertificateException e) {
-            return Boolean.FALSE;
+            LOGGER.fine(e.getMessage());
         }
+        return isCertificateValid;
     }
 
    public static String base64EncodeRequest(XMLObject request, Boolean isHttpPostBinding) throws Exception {
@@ -376,14 +379,17 @@ public class MoSAMLUtils {
     public static Boolean isValidPublicCertificate(String certificate) {
         LOGGER.fine("Validating Public Certificate");
         certificate = serializePublicCertificate(certificate);
+        Boolean isCertificateValid= Boolean.FALSE;
         try {
             CertificateFactory cf = CertificateFactory.getInstance("X.509");
             java.security.cert.X509Certificate cert = (java.security.cert.X509Certificate) cf
                     .generateCertificate(new ByteArrayInputStream(certificate.getBytes(StandardCharsets.UTF_8)));
-            return Boolean.TRUE;
+            if (cert!=null)
+           isCertificateValid=Boolean.TRUE;
         } catch (CertificateException e) {
-            return Boolean.FALSE;
+            LOGGER.fine(e.getMessage());
         }
+        return isCertificateValid;
     }
 
     private static Status buildStatus(String statusCodeValue) {
