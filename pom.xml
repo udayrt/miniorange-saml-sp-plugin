@@ -8,7 +8,7 @@
     </parent>
     <groupId>io.jenkins.plugins</groupId>
     <artifactId>miniorange-saml-sp</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2-SNAPSHOT</version>
     <packaging>hpi</packaging>
     <name>miniOrange SAML</name>
 
