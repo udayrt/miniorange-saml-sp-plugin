@@ -888,12 +888,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
 
         public FormValidation doCheckIdpEntityId(@QueryParameter String idpEntityId) {
             if (StringUtils.isEmpty(idpEntityId)) {
-                return FormValidation.error("The Entity ID URL Can not be kept blank.");
-            }
-            try {
-                new URL(idpEntityId);
-            } catch (MalformedURLException e) {
-                return FormValidation.error("The URL is malformed.", e);
+                return FormValidation.error("The Entity ID Can not be kept blank.");
             }
             return FormValidation.ok();
         }
