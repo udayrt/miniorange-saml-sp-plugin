@@ -10,7 +10,7 @@
     <artifactId>miniorange-saml-sp</artifactId>
     <version>1.0.4-SNAPSHOT</version>
     <packaging>hpi</packaging>
-    <name>miniOrange SAML</name>
+    <name>Jenkins SAML Single Sign On(SSO)</name>
 
     <scm>
         <connection>scm:git:git://github.com/jenkinsci/miniorange-saml-sp-plugin.git</connection>
