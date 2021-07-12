@@ -63,6 +63,10 @@ public class MoSAMLAddIdp extends SecurityRealm {
 
     private static final Logger LOGGER = Logger.getLogger(MoSAMLAddIdp.class.getName());
     public static final String MO_SAML_SP_AUTH_URL = "securityRealm/moSamlAuth";
+    public static final String DEFAULT_CUSTOMER_KEY="16555";
+    public static final String DEFAULT_API_KEY="fFd2XcvTGDemZvbw1bcUesNJWEqKbbUq";
+    public static final String AUTH_BASE_URL = "https://auth.miniorange.com/moas";
+    public static final String NOTIFY_API = AUTH_BASE_URL + "/api/notify/send";
     public static final String MO_SAML_JENKINS_LOGIN_ACTION = "securityRealm/moLoginAction";
     public static final String MO_SAML_SSO_FORCE_STOP = "securityRealm/moSAMLSingleSignOnForceStop";
     public static final String MO_SAML_SP_METADATA_URL = "securityRealm/mospmetadata";
@@ -988,7 +992,87 @@ public class MoSAMLAddIdp extends SecurityRealm {
             return rootURL+"/securityRealm/logout";
         }
 
-     }
+        public FormValidation doSupportEmail(@QueryParameter("supportEmail") final String supportEmail) {
 
+            if (!isValidEmailAddress(supportEmail)) {
+                LOGGER.fine("Invalid Support Email");
+                return FormValidation.error("Please enter valid mail Address.");
+            } else if(StringUtils.isEmpty(supportEmail)) {
+                return FormValidation.error("Please enter mail Address.");
+            }else {
+                return FormValidation.ok();
+            }
+        }
+
+        public FormValidation doSendSupportMail(@QueryParameter("supportEmail") final String supportEmail,
+                                                @QueryParameter("supportName") final String supportName,
+                                                @QueryParameter("supportQuery") final String supportQuery
+                                                ) {
+
+
+            if (StringUtils.isEmpty(supportEmail)) {
+                LOGGER.fine("Empty Support Email");
+                return FormValidation.error("Please enter contact mail Address.");
+
+            } else if (StringUtils.isEmpty(supportQuery)) {
+                LOGGER.fine("Empty Support Query");
+                return FormValidation.error("Please enter Query.");
+
+            } else if (!StringUtils.isEmpty(supportEmail)&&!isValidEmailAddress(supportEmail)) {
+                LOGGER.fine("Invalid Support Email");
+
+                return FormValidation.error("Please enter valid mail Address.");
+            } else {
+                try {
+                    LOGGER.fine("Valid Email Address and sending query.");
+
+                    LOGGER.fine("Received Query - reason:" + supportQuery +
+                            ",contact_email:" + supportEmail + ",Name: "+supportName );
+                    //supportEmail = StringUtils.defaultIfEmpty(supportEmail, StringUtils.EMPTY);
+                    LOGGER.fine("Sending Query - reason:" + supportQuery +",contact_email:" + supportEmail+ "");
+                    String content=new String();
+                    content = content + "Hello,<br><br>Email: " + supportEmail + "<br><br>Name: "+supportName+
+                            "<br><br>Plugin Name: " +"Jenkins SAML SSO" ;
+                    content = content + "<br><br>Query Details: "+supportQuery ;
+                    content = content + "<br><br>Thanks<br>Jenkins Admin";
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("customerKey", MoSAMLAddIdp.DEFAULT_CUSTOMER_KEY);
+                    jsonObject.put("sendEmail", true);
+                    JSONObject emailObject = new JSONObject();
+                    emailObject.put("customerKey", MoSAMLAddIdp.DEFAULT_CUSTOMER_KEY);
+                    emailObject.put("fromEmail", "no-reply@xecurify.com");
+                    emailObject.put("bccEmail", "no-reply@xecurify.com");
+                    emailObject.put("fromName", "miniOrange");
+                    emailObject.put("toEmail", "info@xecurify.com");
+                    emailObject.put("toName", "info@xecurify.com");
+                    emailObject.put("bccEmail", "info@xecurify.com");
+                    emailObject.put("subject", "Feedback for " + "Jenkins SAML SSO");
+                    emailObject.put("content", content);
+                    jsonObject.put("email", emailObject);
+                    String json = jsonObject.toString();
+                    String response1 = MoHttpUtils.sendPostRequest(MoSAMLAddIdp.NOTIFY_API, json,
+                            MoHttpUtils.CONTENT_TYPE_JSON, MoHttpUtils.getAuthorizationHeaders(Long.valueOf(MoSAMLAddIdp.DEFAULT_CUSTOMER_KEY),
+                                    MoSAMLAddIdp.DEFAULT_API_KEY));
+                    LOGGER.fine("Send_feedback response: " + response1);
+                    return FormValidation.ok("Message Sent. The miniOrange support will contact soon.");
+                } catch (Exception e) {
+                    return FormValidation.error("Error occurred while sending request.");
+                }
+            }
+        }
+        public static boolean isValidEmailAddress(String email)
+        {
+            String emailRegex = "^[a-zA-Z0-9_+&*-]+(?:\\."+
+                    "[a-zA-Z0-9_+&*-]+)*@" +
+                    "(?:[a-zA-Z0-9-]+\\.)+[a-z" +
+                    "A-Z]{2,7}$";
+
+            Pattern pat = Pattern.compile(emailRegex);
+            if (email == null)
+                return false;
+            return pat.matcher(email).matches();
+        }
+
+     }
 
 }

@@ -2,9 +2,6 @@
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:f="/lib/form" >
 
     <f:section title="Miniorange Saml SP plugin configuration">
-
-
-
     </f:section>
         <f:section title="SP Configuration">
             <f:entry title="SP Entity ID:" field="sPEntityID">
@@ -97,7 +94,21 @@
             <f:entry title="Assign group to new Users" field="newUserGroup">
                 <f:textbox placeholder="Available in premium version" disabled="true" />
             </f:entry>
+        </f:section>
 
+        <f:section name="support" title="miniOrange Support" >
+            <f:entry title="Email:" field="supportEmail" >
+                <f:textbox  placeholder="Enter Email here."/>
+            </f:entry>
+            <f:entry title="Name:" field="supportName" >
+                <f:textbox  placeholder="Enter Name here."/>
+            </f:entry>
+            <f:entry title="Query:" field="supportQuery" >
+                <f:textarea size="6" placeholder="Enter your query in detail." />
+            </f:entry>
+            <f:validateButton
+                    title="${%Submit Query}" progress="${%Submitting...}"
+                    method="sendSupportMail" with="supportQuery,supportEmail,supportName" />
         </f:section>
 
 </j:jelly>
