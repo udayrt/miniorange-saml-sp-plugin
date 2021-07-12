@@ -8,7 +8,7 @@
     </parent>
     <groupId>io.jenkins.plugins</groupId>
     <artifactId>miniorange-saml-sp</artifactId>
-    <version>1.0.5</version>
+    <version>1.0.6-SNAPSHOT</version>
     <packaging>hpi</packaging>
     <name>Jenkins SAML Single Sign On(SSO)</name>
 
@@ -16,7 +16,7 @@
         <connection>scm:git:git://github.com/jenkinsci/miniorange-saml-sp-plugin.git</connection>
         <developerConnection>scm:git:git@github.com:jenkinsci/miniorange-saml-sp-plugin.git</developerConnection>
         <url>https://github.com/jenkinsci/miniorange-saml-sp-plugin</url>
-        <tag>miniorange-saml-sp-1.0.5</tag>
+        <tag>miniorange-saml-sp-1.0.1</tag>
     </scm>
 
     <properties>
