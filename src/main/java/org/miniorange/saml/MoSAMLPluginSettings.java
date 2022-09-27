@@ -3,12 +3,15 @@ package org.miniorange.saml;
 import jenkins.model.Jenkins;
 import org.apache.commons.io.IOUtils;
 import java.io.IOException;
+import java.util.List;
 import java.util.logging.Logger;
 
 public class MoSAMLPluginSettings {
 
     private String idpEntityId;
     private String ssoUrl;
+    private String metadataUrl;
+    private String metadataFilePath;
     private String publicx509Certificate;
     // Information related to Attribute Mapping
     private String usernameAttribute;
@@ -23,6 +26,8 @@ public class MoSAMLPluginSettings {
     private String  ssoBindingType;
     private String sloBindingType;
     private String fullnameAttribute;
+
+    private List<MoAttributeEntry> samlCustomAttributes;
     private Boolean  userAttributeUpdate;
     private String newUserGroup;
 
@@ -48,14 +53,17 @@ public class MoSAMLPluginSettings {
             LOGGER.fine("An I/O error occurred while initializing the SAML Settings.");
         }
     }
-    public MoSAMLPluginSettings (String idpEntityId, String ssoUrl,  String publicx509Certificate,
+    public MoSAMLPluginSettings (String idpEntityId, String ssoUrl, String metadataUrl, String metadataFilePath,
+                                 String publicx509Certificate,
                                  String usernameAttribute, String emailAttribute,
                                  String nameIDFormat, String sslUrl, String loginType,
                                  String regexPattern, Boolean enableRegexPattern, Boolean signedRequest,
                                  Boolean userCreate ,String ssoBindingType,String sloBindingType,
-                                 String fullnameAttribute, Boolean userAttributeUpdate, String newUserGroup) {
+                                 String fullnameAttribute, List<MoAttributeEntry> samlCustomAttributes, Boolean userAttributeUpdate, String newUserGroup) {
         this.idpEntityId = idpEntityId;
         this.ssoUrl = ssoUrl;
+        this.metadataUrl= metadataUrl;
+        this.metadataFilePath = metadataFilePath;
         this.publicx509Certificate = publicx509Certificate;
         this.usernameAttribute = usernameAttribute;
         this.emailAttribute = emailAttribute;
@@ -71,6 +79,7 @@ public class MoSAMLPluginSettings {
         this.fullnameAttribute= fullnameAttribute;
         this.userAttributeUpdate= userAttributeUpdate;
         this.newUserGroup= newUserGroup;
+        this.samlCustomAttributes = samlCustomAttributes;
     }
 
 
@@ -79,6 +88,9 @@ public class MoSAMLPluginSettings {
     }
 
     public String getSsoUrl() { return ssoUrl; }
+
+    public String getMetadataUrl() {return metadataUrl; }
+    public String getMetadataFilePath() {return metadataFilePath; }
 
     public String getX509PublicCertificate() {
         return publicx509Certificate;
@@ -176,6 +188,14 @@ public class MoSAMLPluginSettings {
     public String getNewUserGroup() {
         return newUserGroup;
     }
+
+    public List<MoAttributeEntry> getSamlCustomAttributes() {
+        LOGGER.fine("Updating Custom Attributes.");
+        if (samlCustomAttributes == null) {
+            return java.util.Collections.emptyList();
+        }
+        return samlCustomAttributes; }
+
 
 
 }

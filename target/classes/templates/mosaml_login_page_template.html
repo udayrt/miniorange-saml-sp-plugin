@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="fr-FR">
+<head resurl="/static/9038c082" data-rooturl="" data-resurl="/static/9038c082" data-imagesurl="/static/9038c082/images">
+    <title>Sign in [Jenkins]</title>
+    <meta name="ROBOTS" content="NOFOLLOW">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/static/9038c082/jsbundles/simple-page.css" type="text/css">
+</head>
+<body>
+<div class="simple-page" role="main">
+    <div class="modal login">
+        <div id="loginIntroDefault">
+            <div class="logo"><img src="/static/9038c082/images/svgs/logo.svg" alt="Jenkins logo"></div>
+            <h1>Welcome to Jenkins!</h1>
+
+            </div>
+        <input type="hidden" />
+        <form method="post" name="login" action="moLoginAction"><input type="hidden">
+            <div class="jenkins-form-item jenkins-form-item--tight"><input autocorrect="off" name="j_username" id="j_username" placeholder="Username" type="text" class="jenkins-input normal" autocapitalize="off"></div>
+            <div class="jenkins-form-item jenkins-form-item--tight"><input name="j_password" placeholder="Password" type="password" class="jenkins-input normal"></div><input name="from" type="hidden" value="/">
+            <div class="submit"><input name="Submit" type="submit" value="Sign in" class="jenkins-button jenkins-button--primary"><br>
+                <center>
+                    <p><b>OR</b></p>
+                </center><input class="jenkins-button jenkins-button--primary" name="idpLoginButton" type="button" value="Login with IDP" onclick="window.location.href = 'moSamlLogin'" style="width: 100%;text-align: center;background-color: # 0b6aa2;">
+            </div>
+        </form>
+            <div></div>
+            <div class="footer"></div>
+        </div>
+    </div>
+</body>
+
+</html>

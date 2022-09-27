@@ -1,0 +1,43 @@
+Manifest-Version: 1.0
+Group-Id: io.jenkins.plugins
+Short-Name: miniorange-saml-sp
+Long-Name: Jenkins SAML Single Sign On(SSO)
+Minimum-Java-Version: 1.8
+Plugin-Version: 1.0.12-SNAPSHOT (private-dbb4df3e-Admin)
+Hudson-Version: 2.176.1
+Jenkins-Version: 2.176.1
+Plugin-Dependencies: jaxb:2.3.6-1,bouncycastle-api:2.16.1,mailer:1.18
+Plugin-Developers: miniOrange:miniOrange:info@xecurify.com
+Libraries: D:\Repositories\Jenkins_Free_Github_Repo\miniorange-saml-sp
+ -plugin\src\main\resources,D:\Repositories\Jenkins_Free_Github_Repo\m
+ iniorange-saml-sp-plugin\target\classes,C:\Users\Admin\.m2\repository
+ \ca\juliusdavies\not-yet-commons-ssl\0.3.9\not-yet-commons-ssl-0.3.9.
+ jar,C:\Users\Admin\.m2\repository\com\google\code\findbugs\jsr305\3.0
+ .1\jsr305-3.0.1.jar,C:\Users\Admin\.m2\repository\com\google\guava\gu
+ ava\18.0\guava-18.0.jar,C:\Users\Admin\.m2\repository\commons-codec\c
+ ommons-codec\1.11\commons-codec-1.11.jar,C:\Users\Admin\.m2\repositor
+ y\commons-collections\commons-collections\3.2.2\commons-collections-3
+ .2.2.jar,C:\Users\Admin\.m2\repository\commons-lang\commons-lang\2.6\
+ commons-lang-2.6.jar,C:\Users\Admin\.m2\repository\javax\xml\stream\s
+ tax-api\1.0-2\stax-api-1.0-2.jar,C:\Users\Admin\.m2\repository\joda-t
+ ime\joda-time\2.9\joda-time-2.9.jar,C:\Users\Admin\.m2\repository\net
+ \shibboleth\utilities\java-support\7.2.0\java-support-7.2.0.jar,C:\Us
+ ers\Admin\.m2\repository\org\apache\commons\commons-lang3\3.7\commons
+ -lang3-3.7.jar,C:\Users\Admin\.m2\repository\org\apache\httpcomponent
+ s\httpclient\4.3.2\httpclient-4.3.2.jar,C:\Users\Admin\.m2\repository
+ \org\apache\httpcomponents\httpcore\4.3.3\httpcore-4.3.3.jar,C:\Users
+ \Admin\.m2\repository\org\apache\santuario\xmlsec\2.0.5\xmlsec-2.0.5.
+ jar,C:\Users\Admin\.m2\repository\org\apache\velocity\velocity\1.7\ve
+ locity-1.7.jar,C:\Users\Admin\.m2\repository\org\codehaus\woodstox\st
+ ax2-api\3.1.4\stax2-api-3.1.4.jar,C:\Users\Admin\.m2\repository\org\c
+ odehaus\woodstox\woodstox-core-asl\4.4.1\woodstox-core-asl-4.4.1.jar,
+ C:\Users\Admin\.m2\repository\org\json\json\20140107\json-20140107.ja
+ r,C:\Users\Admin\.m2\repository\org\jsoup\jsoup\1.10.2\jsoup-1.10.2.j
+ ar,C:\Users\Admin\.m2\repository\org\opensaml\opensaml\2.6.4\opensaml
+ -2.6.4.jar,C:\Users\Admin\.m2\repository\org\opensaml\openws\1.5.4\op
+ enws-1.5.4.jar,C:\Users\Admin\.m2\repository\org\opensaml\xmltooling\
+ 1.4.4\xmltooling-1.4.4.jar,C:\Users\Admin\.m2\repository\org\owasp\es
+ api\esapi\2.0.1\esapi-2.0.1.jar
+Resource-Path: D:\Repositories\Jenkins_Free_Github_Repo\miniorange-sam
+ l-sp-plugin\src\main\webapp
+

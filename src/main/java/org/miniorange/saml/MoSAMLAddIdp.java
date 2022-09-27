@@ -1,6 +1,11 @@
 package org.miniorange.saml;
 
+import hudson.model.BooleanParameterDefinition;
+import org.apache.commons.io.FileUtils;
+import org.miniorange.saml.MoIDPMetadata;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Util;
+import hudson.util.Secret;
 import org.acegisecurity.Authentication;
 import hudson.Extension;
 import hudson.model.Descriptor;
@@ -22,6 +27,7 @@ import org.kohsuke.stapler.*;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 import org.apache.commons.io.IOUtils;
 
+import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.MediaType;
 
@@ -31,9 +37,10 @@ import java.net.MalformedURLException;
 import java.net.URL;
 
 
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-
+import java.nio.file.Files;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -41,6 +48,7 @@ import java.util.regex.Pattern;
 import org.acegisecurity.BadCredentialsException;
 import hudson.tasks.Mailer;
 
+import org.opensaml.common.xml.SAMLConstants;
 import org.opensaml.saml2.metadata.*;
 import org.opensaml.saml2.metadata.impl.*;
 import org.opensaml.xml.Configuration;
@@ -58,6 +66,25 @@ import org.w3c.dom.Element;
 
 import static jenkins.model.Jenkins.get;
 
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.CloseableHttpClient;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.KeyManagementException;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.conn.ssl.SSLContextBuilder;
+import javax.net.ssl.SSLContext;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.config.RegistryBuilder;
+import org.apache.http.conn.socket.PlainConnectionSocketFactory;
+import org.apache.http.conn.socket.ConnectionSocketFactory;
+import org.apache.http.config.Registry;
+import org.apache.http.impl.conn.BasicHttpClientConnectionManager;
+import org.apache.http.conn.HttpClientConnectionManager;
+import org.apache.http.impl.conn.SystemDefaultRoutePlanner;
+import java.net.ProxySelector;
+import org.apache.http.impl.client.HttpClients;
 
 public class MoSAMLAddIdp extends SecurityRealm {
 
@@ -83,7 +110,8 @@ public class MoSAMLAddIdp extends SecurityRealm {
 
     private final String idpEntityId;
     private final String ssoUrl;
-
+    private final String metadataUrl;
+    private final String metadataFilePath;
     private final String publicx509Certificate;
     private final String usernameAttribute;
     private final String fullnameAttribute;
@@ -98,6 +126,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
     private final Boolean userCreate;
     private final String ssoBindingType;
     private final String sloBindingType;
+    private List<MoAttributeEntry> samlCustomAttributes;
     private final Boolean disableDefaultLogin;
     private String newUserGroup;
 
@@ -105,6 +134,8 @@ public class MoSAMLAddIdp extends SecurityRealm {
     @DataBoundConstructor
     public MoSAMLAddIdp(String idpEntityId,
                         String ssoUrl,
+                        String metadataUrl,
+                        String metadataFilePath,
                         String publicx509Certificate,
                         String usernameAttribute,
                         String emailAttribute,
@@ -118,18 +149,44 @@ public class MoSAMLAddIdp extends SecurityRealm {
                         Boolean userCreate,
                         String ssoBindingType,
                         String sloBindingType,
+                        List<MoAttributeEntry> samlCustomAttributes,
                         Boolean userAttributeUpdate,
                         Boolean disableDefaultLogin,
                         String newUserGroup
     ) {
         super();
-        this.idpEntityId = idpEntityId;
-        this.ssoUrl = ssoUrl;
-        this.publicx509Certificate = publicx509Certificate;
+        this.metadataUrl = metadataUrl;
+        this.metadataFilePath = metadataFilePath;
+        if (!StringUtils.isEmpty(metadataUrl) || !StringUtils.isEmpty(metadataFilePath) ) {
+            String metadata = (!StringUtils.isEmpty(metadataUrl) ? sendGetRequest(metadataUrl) : getMetadataFromFile(metadataFilePath));
+            List<String> metadataUrlValues = configureFromMetadata(metadata);
+            if (metadataUrlValues != null) {
+
+                this.idpEntityId = metadataUrlValues.get(0);
+                this.nameIDFormat = metadataUrlValues.get(1);
+                this.ssoUrl = metadataUrlValues.get(2);
+                this.sslUrl = "";
+                this.publicx509Certificate = metadataUrlValues.get(4);
+            }
+            else {
+                this.idpEntityId = idpEntityId;
+                this.ssoUrl = ssoUrl;
+                this.nameIDFormat = nameIDFormat;
+                this.sslUrl = sslUrl;
+                this.publicx509Certificate = publicx509Certificate;
+            }
+
+        }
+        else{
+            this.idpEntityId = idpEntityId;
+            this.ssoUrl = ssoUrl;
+            this.nameIDFormat = nameIDFormat;
+            this.sslUrl = sslUrl;
+            this.publicx509Certificate = publicx509Certificate;
+        }
+
         this.usernameAttribute = usernameAttribute;
         this.emailAttribute = emailAttribute;
-        this.nameIDFormat = nameIDFormat;
-        this.sslUrl = sslUrl;
         this.loginType = (loginType != null) ? loginType : "usernameLogin";
         this.regexPattern = regexPattern;
         this.enableRegexPattern = (enableRegexPattern != null) ? enableRegexPattern : false;
@@ -137,6 +194,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         this.userCreate = (userCreate != null) ? userCreate : false;
         this.ssoBindingType = (ssoBindingType != null) ? ssoBindingType : "HttpRedirect";
         this.sloBindingType = (sloBindingType != null) ? sloBindingType : "HttpRedirect";
+        this.samlCustomAttributes = samlCustomAttributes;
         this.userAttributeUpdate = (userAttributeUpdate != null) ? userAttributeUpdate : false;
         this.fullnameAttribute = fullnameAttribute;
         this.disableDefaultLogin = (disableDefaultLogin != null) ? disableDefaultLogin : false;
@@ -180,6 +238,11 @@ public class MoSAMLAddIdp extends SecurityRealm {
         return (req, rsp, node) -> {
             rsp.setContentType("text/html;charset=UTF-8");
             String html = IOUtils.toString(MoSAMLAddIdp.class.getResourceAsStream(LOGIN_TEMPLATE_PATH), "UTF-8");
+            String baseURL=get().getRootUrl();
+            if(baseURL.endsWith("/")){
+                baseURL= baseURL.substring(0,baseURL.length()-1);
+            }
+            html = html.replace("$$resURL$$",baseURL);
             if (StringUtils.isNotBlank(errorMessage)) {
                 html = html.replace("<input type=\"hidden\" />", errorMessage);
             }
@@ -261,7 +324,11 @@ public class MoSAMLAddIdp extends SecurityRealm {
     private String customLoginTemplate(StaplerResponse response, String errorMessage) throws IOException {
         response.setContentType("text/html;charset=UTF-8");
         String html = IOUtils.toString(MoSAMLAddIdp.class.getResourceAsStream(LOGIN_TEMPLATE_PATH), "UTF-8");
-
+        String baseURL=get().getRootUrl();
+        if(baseURL.endsWith("/")){
+            baseURL= baseURL.substring(0,baseURL.length()-1);
+        }
+        html = html.replace("$$resURL$$",baseURL);
         if (StringUtils.isNotBlank(errorMessage)) {
             LOGGER.fine(errorMessage);
 
@@ -273,12 +340,20 @@ public class MoSAMLAddIdp extends SecurityRealm {
 
     public void doMoSamlLogin(final StaplerRequest request, final StaplerResponse response, @Header("Referer") final String referer) {
         recreateSession(request);
-        String redirectOnFinish = calculateSafeRedirect(referer);
+        String redirectOnFinish = StringUtils.EMPTY;
+        if(StringUtils.isEmpty(request.getQueryString())){
+             redirectOnFinish = calculateSafeRedirect(referer);
+        }
+        else{
+            redirectOnFinish = request.getQueryString();
+        }
+
+        LOGGER.fine("relay state " + redirectOnFinish);
         request.getSession().setAttribute(REFERER_ATTRIBUTE, redirectOnFinish);
 
         LOGGER.fine("in doMoSamlLogin");
         MoSAMLManager moSAMLManager = new MoSAMLManager(getMoSAMLPluginSettings());
-        moSAMLManager.createAuthnRequestAndRedirect(request, response);
+        moSAMLManager.createAuthnRequestAndRedirect(request, response, redirectOnFinish);
     }
 
     private String getBaseUrl() {
@@ -515,9 +590,131 @@ public class MoSAMLAddIdp extends SecurityRealm {
         return null;
     }
 
+    private static CloseableHttpClient getHttpClient() throws KeyStoreException, NoSuchAlgorithmException,
+            KeyManagementException {
+        HttpClientBuilder builder = HttpClientBuilder.create();
+        SSLContext sslContext = new SSLContextBuilder().loadTrustMaterial(null, (arg0, arg1) -> true).build();
+        SSLConnectionSocketFactory sslConnectionFactory = new SSLConnectionSocketFactory(sslContext,
+                SSLConnectionSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
+        builder.setSSLSocketFactory(sslConnectionFactory);
+
+        Registry<ConnectionSocketFactory> registry = RegistryBuilder.<ConnectionSocketFactory>create()
+                .register("https", sslConnectionFactory)
+                .register("http", PlainConnectionSocketFactory.INSTANCE)
+                .build();
+
+        HttpClientConnectionManager ccm = new BasicHttpClientConnectionManager(registry);
+
+        builder.setConnectionManager(ccm);
+
+        //return builder.build();
+        SystemDefaultRoutePlanner routePlanner = new SystemDefaultRoutePlanner(ProxySelector.getDefault());
+        CloseableHttpClient httpclient = HttpClients.custom().setRoutePlanner(routePlanner).setConnectionManager(ccm)
+                .build();
+        return httpclient;
+    }
+
+    public static String getMetadataFromFile(String path) {
+        String data = StringUtils.EMPTY;
+        File file = new File(path.trim());
+        try {
+            data = FileUtils.readFileToString(file, "UTF-8");
+        } catch (IOException e) {
+            LOGGER.fine("Error occurred in reading file " + e);
+            return StringUtils.EMPTY;
+        }
+        LOGGER.fine("data from file is " + data);
+        return data;
+    }
+
+    public static String sendGetRequest(String url) {
+        String errorMsg = new String("Did not get metadata");
+        try {
+            LOGGER.info("MoHttpUtils sendGetRequest Sending GET request to " + url);
+            CloseableHttpClient httpClient = getHttpClient();
+            HttpGet getRequest = new HttpGet(url);
+            org.apache.http.HttpResponse response = httpClient.execute(getRequest);
+            LOGGER.info("Response for HTTP Request: " + response.toString() + " and Status Code: " + response
+                    .getStatusLine().getStatusCode());
+
+            if (response.getStatusLine().getStatusCode() == 200 && response.getEntity() != null) {
+                LOGGER.info("Response Entity found. Reading Response payload.");
+                String data = IOUtils.toString(new InputStreamReader((response.getEntity().getContent())));
+                LOGGER.info("Response payload: " + data);
+                httpClient.close();
+                return data;
+            } else {
+
+                LOGGER.info("Response Entity NOT found. ");
+                httpClient.close();
+                return errorMsg;
+            }
+        } catch (Exception e) {
+            LOGGER.info("error occur "+e);
+            return errorMsg;
+        }
+    }
+
+    public static List<String> configureFromMetadata(String metadata) {
+
+        List<String> metadataUrlValues = new ArrayList<String>();
+        metadata = metadata.replaceAll("[^\\x20-\\x7e]", "");
+        MoIDPMetadata idpMetadata = new MoIDPMetadata(metadata);
+        String idpEntityId = "";
+        String ssoBinding = "HttpRedirect";
+        String ssoUrl = "";
+        String sloBinding = "HttpRedirect";
+        String sloUrl = "";
+        String nameIdFormat = "";
+
+        try {
+
+            idpEntityId = idpMetadata.getEntityId();
+
+            nameIdFormat = StringUtils.defaultIfBlank(idpMetadata.nameIdFormat,
+                    "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified");
+
+            if (idpMetadata.getSingleSignOnServices().containsKey(SAMLConstants.SAML2_REDIRECT_BINDING_URI)) {
+                ssoBinding = "HttpRedirect";
+                ssoUrl = idpMetadata.getSingleSignOnServices().get(SAMLConstants.SAML2_REDIRECT_BINDING_URI);
+            } else {
+                ssoBinding = "HttpPost";
+                ssoUrl = idpMetadata.getSingleSignOnServices().get(SAMLConstants.SAML2_POST_BINDING_URI);
+            }
+            if (idpMetadata.getSingleLogoutServices().size() > 0) {
+                if (idpMetadata.getSingleLogoutServices().containsKey(SAMLConstants.SAML2_REDIRECT_BINDING_URI)) {
+                    sloBinding = "HttpRedirect";
+                    sloUrl = idpMetadata.getSingleLogoutServices().get(SAMLConstants.SAML2_REDIRECT_BINDING_URI);
+                } else {
+                    sloBinding = "HttpPost";
+                    sloUrl = idpMetadata.getSingleLogoutServices().get(SAMLConstants.SAML2_POST_BINDING_URI);
+                }
+            }
+
+            metadataUrlValues.add(idpEntityId);
+            metadataUrlValues.add(nameIdFormat);
+            metadataUrlValues.add(ssoUrl);
+            metadataUrlValues.add(sloUrl);
+            String x509Certificate = idpMetadata.getSigningCertificates().get(0);
+            metadataUrlValues.add(x509Certificate);
+        } catch (Exception e) {
+            LOGGER.fine("Error Occured while updating attributes" + e);
+            return null;
+        }
+        return metadataUrlValues;
+    }
     @RequirePOST
     public HttpResponse doMoSamlAuth(final StaplerRequest request, final StaplerResponse response) throws IOException {
-        String redirectUrl = getBaseUrl();
+        String referer = (String) request.getSession().getAttribute(REFERER_ATTRIBUTE);
+        String redirectUrl = StringUtils.EMPTY;
+        String relayState = request.getParameter(MoSAMLUtils.RELAY_STATE_PARAM);
+        if(!StringUtils.isEmpty(relayState)){
+            redirectUrl= URLDecoder.decode(relayState, "UTF-8");
+        }
+        LOGGER.fine("Relay state is "+ redirectUrl);
+        if(StringUtils.isEmpty(redirectUrl)){
+            redirectUrl = getBaseUrl();
+        }
         recreateSession(request);
         LOGGER.fine(" Reading SAML Response");
         String username = "";
@@ -525,9 +722,17 @@ public class MoSAMLAddIdp extends SecurityRealm {
         MoSAMLPluginSettings settings = getMoSAMLPluginSettings();
         MoSAMLResponse MoSAMLResponse ;
         MoSAMLManager moSAMLManager = new MoSAMLManager(getMoSAMLPluginSettings());
+        MoSAMLTemplateManager moSAMLTemplateManager = new MoSAMLTemplateManager(getMoSAMLPluginSettings());
 
         try {
             MoSAMLResponse = moSAMLManager.readSAMLResponse(request, response);
+
+            if (StringUtils.contains(relayState, "testidpconfiguration")) {
+                LOGGER.fine("Showing Test Configuration Result");
+                moSAMLTemplateManager.showTestConfigurationResult(MoSAMLResponse, request, response, null);
+                return null;
+            }
+            LOGGER.fine("Not showing test config");
 
             if (MoSAMLResponse.getAttributes().get(settings.getUsernameAttribute()) != null
                     && MoSAMLResponse.getAttributes().get(settings.getUsernameAttribute()).length == 1) {
@@ -567,16 +772,15 @@ public class MoSAMLAddIdp extends SecurityRealm {
             } else if(settings.getLoginType().equals("emailLogin") && StringUtils.isNotBlank(email)){
                 LOGGER.fine("Email Login Selected");
                 ArrayList<String> usernameList = handleEmailLogin(request, response, email, settings, MoSAMLResponse);
-                if(usernameList.size() != 1){
+                if(usernameList.size() > 1){
                     LOGGER.fine("Multiple Mail Addresses");
                     String errorMessage = "<div class=\"alert alert-danger\">More than one user found with this email address.</div><br>";
                     return doMoLogin(request,response,errorMessage);}
-                User user= User.getById(usernameList.get(0),false);
-                if (user == null && !settings.getUserCreate()) {
-                    LOGGER.fine("User does not exist");
+                if (usernameList.size()==0 && !settings.getUserCreate()) {
+                    LOGGER.fine("User does not exist and user creation is disabled");
                     String errorMessage = "<div class=\"alert alert-danger\">User does not Exist</div><br>";
                     return doMoLogin(request, response, errorMessage);
-                } else if (user == null && settings.getUserCreate()) {
+                } else if (usernameList.size()==0 && settings.getUserCreate()) {
                     User newUser = userCreateSAML(username, email, settings, MoSAMLResponse);
                     if (newUser == null) {
                         LOGGER.fine("User creation Failed");
@@ -586,7 +790,8 @@ public class MoSAMLAddIdp extends SecurityRealm {
                         return createSessionAndLoginUser(newUser,request,response,true,settings,redirectUrl);
                     }
                 } else {
-                   return createSessionAndLoginUser(user,request,response,false,settings,redirectUrl);
+                    User user= User.getById(usernameList.get(0),false);
+                    return createSessionAndLoginUser(user,request,response,false,settings,redirectUrl);
 
                 }
 
@@ -629,6 +834,8 @@ public class MoSAMLAddIdp extends SecurityRealm {
             User new_user=null;
         try {
                 new_user = User.getById(username, true);
+                LOGGER.fine("Updating user attributes");
+                attributeUpdate(settings, new_user, moSAMLResponse,settings.getLoginType());
 
                 if(new_user!=null ){
                     new_user.addProperty(new Mailer.UserProperty(email));
@@ -639,6 +846,62 @@ public class MoSAMLAddIdp extends SecurityRealm {
             return new_user;
         }
         return new_user;
+    }
+
+    public void attributeUpdate(MoSAMLPluginSettings settings, User user, MoSAMLResponse moSAMLResponse,String loginType) {
+        try {
+            if (user != null) {
+                LOGGER.fine("user is not null");
+                modifyUserSamlCustomAttributes(user, settings, moSAMLResponse);
+            }
+        }catch (Exception e)
+        {
+            LOGGER.fine("Error occurred."+e);
+        }
+    }
+
+    private void modifyUserSamlCustomAttributes(User user, MoSAMLPluginSettings settings, MoSAMLResponse moSAMLResponse) {
+        LOGGER.fine("Adding custom Attributes");
+
+        if (!settings.getSamlCustomAttributes().isEmpty() && user != null) {
+            MoSAMLuserProperty userProperty = new MoSAMLuserProperty(new ArrayList<>());
+            Map<String, String[]> responseSAMLAttributes = moSAMLResponse.getAttributes();
+            for (String name: responseSAMLAttributes.keySet()){
+                String key = name.toString();
+                String value = responseSAMLAttributes.get(name).toString();
+                System.out.println(key + " " + value);
+            }
+           /* for (String name: getSamlCustomAttributes.keySet()){
+                String key = name.toString();
+                String value = responseSAMLAttributes.get(name).toString();
+                System.out.println(key + " " + value);
+            }*/
+
+            for (MoAttributeEntry attributeEntry : getSamlCustomAttributes()) {
+                LOGGER.fine("attributeEntry"+attributeEntry);
+                if (attributeEntry instanceof MoAttribute) {
+                    MoAttribute attr = (MoAttribute) attributeEntry;
+
+                    MoSAMLuserProperty.Attribute item = new MoSAMLuserProperty.Attribute(attr.getName(), attr.getDisplayName());
+                    LOGGER.fine(attr.getName()+ attr.getDisplayName()+"sssS");
+                    if (responseSAMLAttributes.containsKey(attr.getName())) {
+                        // LOGGER.fine("in there");
+                        String AttributeVal = responseSAMLAttributes.get(attr.getName())[0];
+                        LOGGER.fine("AttributeVal"+AttributeVal);
+                        item.setValue(AttributeVal);
+                    } else {
+                        item.setValue("");
+                    }
+                    userProperty.getAttributes().add(item);
+                }
+
+            }
+            try {
+                user.addProperty(userProperty);
+            } catch (IOException e) {
+                LOGGER.fine("Error Occured while updating attributes" + e);
+            }
+        }
     }
 
 
@@ -662,7 +925,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
                 Matcher matcher = pattern.matcher(username);
                 LOGGER.fine(String.valueOf(matcher));
                 if (matcher.find()) {
-                    username = org.apache.commons.lang3.StringUtils.EMPTY;
+                    username = StringUtils.EMPTY;
                     if (matcher.groupCount() > 0) {
                         StringBuffer buf = new StringBuffer();
                         for (int i = 1; i <= matcher.groupCount(); ++i) {
@@ -717,10 +980,17 @@ public class MoSAMLAddIdp extends SecurityRealm {
         }
     }
 
+    public String getMetadataUrl() {
+        return metadataUrl;
+    }
+
+    public String getMetadataFilePath() {
+        return metadataFilePath;
+    }
     public String getIdpEntityId() {
         return idpEntityId;
     }
-
+    
     public String getSsoUrl() {
         return ssoUrl;
     }
@@ -850,18 +1120,24 @@ public class MoSAMLAddIdp extends SecurityRealm {
     }
 
 
+    @NonNull
+    public List<MoAttributeEntry> getSamlCustomAttributes() {
+        if (samlCustomAttributes == null) {
+            return java.util.Collections.emptyList();
+        }
+        return samlCustomAttributes;
+    }
 
-
-
-
+    public void setSamlCustomAttribute(List<MoAttributeEntry> samlCustomAttributes) {
+        this.samlCustomAttributes = samlCustomAttributes;
+    }
 
 
     private MoSAMLPluginSettings getMoSAMLPluginSettings() {
-        MoSAMLPluginSettings settings = new MoSAMLPluginSettings(idpEntityId, ssoUrl, publicx509Certificate,
-                usernameAttribute, emailAttribute, nameIDFormat,
-                sslUrl, loginType, regexPattern,
-                enableRegexPattern, signedRequest, userCreate,
-                ssoBindingType, sloBindingType, fullnameAttribute, userAttributeUpdate,
+        MoSAMLPluginSettings settings = new MoSAMLPluginSettings(idpEntityId, ssoUrl, metadataUrl,
+                metadataFilePath, publicx509Certificate, usernameAttribute, emailAttribute, nameIDFormat,
+                sslUrl, loginType, regexPattern, enableRegexPattern, signedRequest, userCreate,
+                ssoBindingType, sloBindingType, fullnameAttribute,samlCustomAttributes,  userAttributeUpdate,
                 newUserGroup);
         return settings;
     }
@@ -991,88 +1267,35 @@ public class MoSAMLAddIdp extends SecurityRealm {
             }
             return rootURL+"/securityRealm/logout";
         }
-
-        public FormValidation doSupportEmail(@QueryParameter("supportEmail") final String supportEmail) {
-
-            if (!isValidEmailAddress(supportEmail)) {
-                LOGGER.fine("Invalid Support Email");
-                return FormValidation.error("Please enter valid mail Address.");
-            } else if(StringUtils.isEmpty(supportEmail)) {
-                return FormValidation.error("Please enter mail Address.");
-            }else {
-                return FormValidation.ok();
+        public FormValidation doPerformTestConfiguration(@QueryParameter String idpEntityId, @QueryParameter String ssoUrl, @QueryParameter String publicx509Certificate) {
+            if(StringUtils.isEmpty(idpEntityId) || StringUtils.isEmpty(ssoUrl) || StringUtils.isEmpty(publicx509Certificate)) {
+                LOGGER.fine("Entity ID is " +  "failed");
+                return FormValidation.error("Save the idp configurations first. Could not perform test config");
             }
+            LOGGER.fine("Test config called..");
+            String testConfigUrl = StringUtils.removeEnd(getBaseUrl(),"/") + "/securityRealm/moSamlLogin?from=testidpconfiguration";
+            return FormValidation.okWithMarkup("Click " + "<a href='"+ testConfigUrl+ "' target='_blank' >here</a>"+ " to see the test configurations result.");
+        }
+        private String getBaseUrl() {
+            return get().getRootUrl();
         }
 
-        public FormValidation doSendSupportMail(@QueryParameter("supportEmail") final String supportEmail,
-                                                @QueryParameter("supportName") final String supportName,
-                                                @QueryParameter("supportQuery") final String supportQuery
-                                                ) {
-
-
-            if (StringUtils.isEmpty(supportEmail)) {
-                LOGGER.fine("Empty Support Email");
-                return FormValidation.error("Please enter contact mail Address.");
-
-            } else if (StringUtils.isEmpty(supportQuery)) {
-                LOGGER.fine("Empty Support Query");
-                return FormValidation.error("Please enter Query.");
-
-            } else if (!StringUtils.isEmpty(supportEmail)&&!isValidEmailAddress(supportEmail)) {
-                LOGGER.fine("Invalid Support Email");
-
-                return FormValidation.error("Please enter valid mail Address.");
-            } else {
-                try {
-                    LOGGER.fine("Valid Email Address and sending query.");
-
-                    LOGGER.fine("Received Query - reason:" + supportQuery +
-                            ",contact_email:" + supportEmail + ",Name: "+supportName );
-                    //supportEmail = StringUtils.defaultIfEmpty(supportEmail, StringUtils.EMPTY);
-                    LOGGER.fine("Sending Query - reason:" + supportQuery +",contact_email:" + supportEmail+ "");
-                    String content=new String();
-                    content = content + "Hello,<br><br>Email: " + supportEmail + "<br><br>Name: "+supportName+
-                            "<br><br>Plugin Name: " +"Jenkins SAML SSO" ;
-                    content = content + "<br><br>Query Details: "+supportQuery ;
-                    content = content + "<br><br>Thanks<br>Jenkins Admin";
-                    JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("customerKey", MoSAMLAddIdp.DEFAULT_CUSTOMER_KEY);
-                    jsonObject.put("sendEmail", true);
-                    JSONObject emailObject = new JSONObject();
-                    emailObject.put("customerKey", MoSAMLAddIdp.DEFAULT_CUSTOMER_KEY);
-                    emailObject.put("fromEmail", "no-reply@xecurify.com");
-                    emailObject.put("bccEmail", "no-reply@xecurify.com");
-                    emailObject.put("fromName", "miniOrange");
-                    emailObject.put("toEmail", "info@xecurify.com");
-                    emailObject.put("toName", "info@xecurify.com");
-                    emailObject.put("bccEmail", "info@xecurify.com");
-                    emailObject.put("subject", "Feedback for " + "Jenkins SAML SSO");
-                    emailObject.put("content", content);
-                    jsonObject.put("email", emailObject);
-                    String json = jsonObject.toString();
-                    String response1 = MoHttpUtils.sendPostRequest(MoSAMLAddIdp.NOTIFY_API, json,
-                            MoHttpUtils.CONTENT_TYPE_JSON, MoHttpUtils.getAuthorizationHeaders(Long.valueOf(MoSAMLAddIdp.DEFAULT_CUSTOMER_KEY),
-                                    MoSAMLAddIdp.DEFAULT_API_KEY));
-                    LOGGER.fine("Send_feedback response: " + response1);
-                    return FormValidation.ok("Message Sent. The miniOrange support will contact soon.");
-                } catch (Exception e) {
-                    return FormValidation.error("Error occurred while sending request.");
-                }
+        public FormValidation doValidateMetadataUrl(@QueryParameter String metadataUrl) {
+            String metadata = sendGetRequest(metadataUrl);
+            List<String> metadataUrlValues = configureFromMetadata(metadata);
+            if (metadataUrlValues == null) {
+                return FormValidation.error("Invalid metadata Url");
             }
+            return FormValidation.okWithMarkup("Valid metadata Url, please hit save button");
         }
-        public static boolean isValidEmailAddress(String email)
-        {
-            String emailRegex = "^[a-zA-Z0-9_+&*-]+(?:\\."+
-                    "[a-zA-Z0-9_+&*-]+)*@" +
-                    "(?:[a-zA-Z0-9-]+\\.)+[a-z" +
-                    "A-Z]{2,7}$";
-
-            Pattern pat = Pattern.compile(emailRegex);
-            if (email == null)
-                return false;
-            return pat.matcher(email).matches();
+        public FormValidation doValidateMetadataFile(@QueryParameter String metadataFilePath) {
+            String metadata = getMetadataFromFile(metadataFilePath);
+            List<String> metadataUrlValues = configureFromMetadata(metadata);
+            if (metadataUrlValues == null) {
+                return FormValidation.error("File not found or wrong file extension");
+            }
+            return FormValidation.okWithMarkup("Validation successful, please hit save button");
         }
-
-     }
+    }
 
 }

@@ -1,0 +1,2 @@
+#Mon Aug 29 13:11:57 IST 2022
+constructor=idpEntityId,ssoUrl,publicx509Certificate,usernameAttribute,emailAttribute,fullnameAttribute,nameIDFormat,sslUrl,loginType,regexPattern,enableRegexPattern,signedRequest,userCreate,ssoBindingType,sloBindingType,userAttributeUpdate,disableDefaultLogin,newUserGroup

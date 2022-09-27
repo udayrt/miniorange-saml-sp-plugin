@@ -28,32 +28,75 @@
 
         </f:section>
 
-        <f:section title="IDP Configuration">
-            <f:entry title="IDP Entity ID / Issuer:" field="idpEntityId" >
-                <f:textbox placeholder="Enter Entity ID / Issuer" />
-            </f:entry>
+    <f:section title="IDP configuration">
 
-            <f:entry title="Single Sign On URL:" field="ssoUrl" >
-                <f:textbox placeholder="Enter Single Sign On URL" />
-            </f:entry>
+        <h4>I will enter metadata url</h4>
 
-            <f:entry title="Single Logout  URL:" field="sslUrl"  >
-                <f:textbox placeholder="Available in premium version" disabled="true" />
-            </f:entry>
+        <f:entry title="Enter metadata url:" field="metadataUrl">
+            <f:textbox placeholder="Enter metadata url"/>
+        </f:entry>
+        <f:validateButton
+                title="${%Validate metadata Url}" progress="${%validating...}"
+                method="validateMetadataUrl" with="metadataUrl"
+        />
 
-            <f:entry name="nameIDFormat" title="Name ID Format:" field="nameIDFormat" >
-                <select name="nameIDFormat" style="width: 100%;">
-                    <f:option value="urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified" selected="${instance.nameIDFormat == 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'}">urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified</f:option>
-                    <f:option value="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress" selected="${instance.nameIDFormat == 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress'}">urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</f:option>
-                    <f:option value="urn:oasis:names:tc:SAML:1.1:nameid-format:persistent" selected="${instance.nameIDFormat == 'urn:oasis:names:tc:SAML:1.1:nameid-format:persistent'}">urn:oasis:names:tc:SAML:1.1:nameid-format:persistent</f:option>
-                    <f:option value="urn:oasis:names:tc:SAML:1.1:nameid-format:transient" selected="${instance.nameIDFormat == 'urn:oasis:names:tc:SAML:1.1:nameid-format:transient'}">urn:oasis:names:tc:SAML:1.1:nameid-format:transient</f:option>
-                </select>
-            </f:entry>
+        <h4>OR</h4>
 
-            <f:entry title="IDP Signing Certificate:" field="publicx509Certificate" >
-                <f:textarea size="4" placeholder="Enter IDP Signing Certificate:" />
-            </f:entry>
-        </f:section>
+        <h4>I will enter metadata file path</h4>
+
+        <f:entry title="IDP Metadata:" field="metadataFilePath">
+            <f:textbox placeholder="Enter the path for Idp metadata file"/>
+        </f:entry>
+        <f:validateButton
+                title="${%Validate metadata File}" progress="${%validating...}"
+                method="validateMetadataFile" with="metadataFilePath"
+        />
+
+        <h4>OR</h4>
+
+        <h4>I will do manual configuration</h4>
+
+        <f:entry title="IDP Entity ID / Issuer:" field="idpEntityId">
+            <f:textbox placeholder="Enter Entity ID / Issuer"/>
+        </f:entry>
+
+        <f:entry title="Single Sign On URL:" field="ssoUrl">
+            <f:textbox placeholder="Enter Single Sign On URL"/>
+        </f:entry>
+
+        <f:entry title="Single Logout URL:" field="sslUrl">
+            <f:textbox placeholder="Available in premium version" disabled="true"/>
+        </f:entry>
+
+        <f:entry name="nameIDFormat" title="Name ID Format:" field="nameIDFormat">
+            <select name="nameIDFormat" style="width: 100%;">
+                <f:option value="urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+                          selected="${instance.nameIDFormat == 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'}">
+                    urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified
+                </f:option>
+                <f:option value="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"
+                          selected="${instance.nameIDFormat == 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress'}">
+                    urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress
+                </f:option>
+                <f:option value="urn:oasis:names:tc:SAML:1.1:nameid-format:persistent"
+                          selected="${instance.nameIDFormat == 'urn:oasis:names:tc:SAML:1.1:nameid-format:persistent'}">
+                    urn:oasis:names:tc:SAML:1.1:nameid-format:persistent
+                </f:option>
+                <f:option value="urn:oasis:names:tc:SAML:1.1:nameid-format:transient"
+                          selected="${instance.nameIDFormat == 'urn:oasis:names:tc:SAML:1.1:nameid-format:transient'}">
+                    urn:oasis:names:tc:SAML:1.1:nameid-format:transient
+                </f:option>
+            </select>
+        </f:entry>
+
+        <f:entry title="IDP Signing Certificate:" field="publicx509Certificate">
+            <f:textarea size="4" placeholder="Enter IDP Signing Certificate:"/>
+        </f:entry>
+
+        <f:validateButton
+                title="${%Test Configuration}" progress="${%validating...}"
+                method="performTestConfiguration" with="idpEntityId,ssoUrl,publicx509Certificate"/>
+    </f:section>
 
         <f:section title="User Profile Configuration">
             <f:entry name="loginType" title="Login Jenkins account by:" field="loginType">
@@ -62,6 +105,7 @@
                     <f:option value="emailLogin" selected="${instance.loginType == 'emailLogin'}">Email</f:option>
                 </select>
             </f:entry>
+
 
             <f:entry title="Username Attribute:" field="usernameAttribute" >
                 <f:textbox placeholder="Enter Username Attribute" />
@@ -90,26 +134,16 @@
                 <f:checkbox/>
             </f:entry>
 
+            <f:entry title="Custom Attributes" help="/plugin/miniorange-saml-sp/help-samlCustomAttributes.html" >
+                            <f:repeatableHeteroProperty field="samlCustomAttributes" hasHeader="true"/>
+                        </f:entry>
+
 
             <f:entry title="Assign group to new Users" field="newUserGroup">
                 <f:textbox placeholder="Available in premium version" disabled="true" />
             </f:entry>
         </f:section>
 
-        <f:section name="support" title="miniOrange Support" >
-            <f:entry title="Email:" field="supportEmail" >
-                <f:textbox  placeholder="Enter Email here."/>
-            </f:entry>
-            <f:entry title="Name:" field="supportName" >
-                <f:textbox  placeholder="Enter Name here."/>
-            </f:entry>
-            <f:entry title="Query:" field="supportQuery" >
-                <f:textarea size="6" placeholder="Enter your query in detail." />
-            </f:entry>
-            <f:validateButton
-                    title="${%Submit Query}" progress="${%Submitting...}"
-                    method="sendSupportMail" with="supportQuery,supportEmail,supportName" />
-        </f:section>
 
 </j:jelly>
 
