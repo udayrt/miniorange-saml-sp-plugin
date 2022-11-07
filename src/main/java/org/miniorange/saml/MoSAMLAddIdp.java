@@ -115,6 +115,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
     private final String publicx509Certificate;
     private final String usernameAttribute;
     private final String fullnameAttribute;
+    private final String usernameCaseConversion;
     private final Boolean userAttributeUpdate;
     private final String emailAttribute;
     private final String nameIDFormat;
@@ -124,6 +125,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
     private final Boolean enableRegexPattern;
     private final Boolean signedRequest;
     private final Boolean userCreate;
+    private final Boolean forceAuthn;
     private final String ssoBindingType;
     private final String sloBindingType;
     private List<MoAttributeEntry> samlCustomAttributes;
@@ -137,6 +139,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
                         String metadataUrl,
                         String metadataFilePath,
                         String publicx509Certificate,
+                        String usernameCaseConversion,
                         String usernameAttribute,
                         String emailAttribute,
                         String fullnameAttribute,
@@ -147,6 +150,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
                         Boolean enableRegexPattern,
                         Boolean signedRequest,
                         Boolean userCreate,
+                        Boolean forceAuthn,
                         String ssoBindingType,
                         String sloBindingType,
                         List<MoAttributeEntry> samlCustomAttributes,
@@ -185,21 +189,22 @@ public class MoSAMLAddIdp extends SecurityRealm {
             this.publicx509Certificate = publicx509Certificate;
         }
 
-        this.usernameAttribute = usernameAttribute;
-        this.emailAttribute = emailAttribute;
+        this.usernameCaseConversion = usernameCaseConversion;
+        this.usernameAttribute = (usernameAttribute != null && !usernameAttribute.trim().equals("")) ? usernameAttribute : "NameID";
+        this.emailAttribute = (emailAttribute != null && !emailAttribute.trim().equals("")) ? emailAttribute : "NameID";
         this.loginType = (loginType != null) ? loginType : "usernameLogin";
         this.regexPattern = regexPattern;
         this.enableRegexPattern = (enableRegexPattern != null) ? enableRegexPattern : false;
-        this.signedRequest = (signedRequest != null) ? signedRequest : false;
+        this.signedRequest = (signedRequest != null) ? signedRequest : true;
         this.userCreate = (userCreate != null) ? userCreate : false;
+        this.forceAuthn = (forceAuthn != null) ? forceAuthn : false;
         this.ssoBindingType = (ssoBindingType != null) ? ssoBindingType : "HttpRedirect";
-        this.sloBindingType = (sloBindingType != null) ? sloBindingType : "HttpRedirect";
+        this.sloBindingType =  (sloBindingType != null) ? sloBindingType : "HttpRedirect";
         this.samlCustomAttributes = samlCustomAttributes;
         this.userAttributeUpdate = (userAttributeUpdate != null) ? userAttributeUpdate : false;
         this.fullnameAttribute = fullnameAttribute;
         this.disableDefaultLogin = (disableDefaultLogin != null) ? disableDefaultLogin : false;
         this.newUserGroup= newUserGroup;
-
     }
 
 
@@ -707,7 +712,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
     public HttpResponse doMoSamlAuth(final StaplerRequest request, final StaplerResponse response) throws IOException {
         String referer = (String) request.getSession().getAttribute(REFERER_ATTRIBUTE);
         String redirectUrl = StringUtils.EMPTY;
-        String relayState = request.getParameter(MoSAMLUtils.RELAY_STATE_PARAM);
+        String relayState = calculateSafeRedirect(request.getParameter(MoSAMLUtils.RELAY_STATE_PARAM));
         if(!StringUtils.isEmpty(relayState)){
             redirectUrl= URLDecoder.decode(relayState, "UTF-8");
         }
@@ -737,6 +742,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
             if (MoSAMLResponse.getAttributes().get(settings.getUsernameAttribute()) != null
                     && MoSAMLResponse.getAttributes().get(settings.getUsernameAttribute()).length == 1) {
                 username = MoSAMLResponse.getAttributes().get(settings.getUsernameAttribute())[0];
+                username = loadUserName(username);
             }
 
             if (MoSAMLResponse.getAttributes().get(settings.getEmailAttribute()) != null
@@ -1047,6 +1053,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         return userCreate;
     }
 
+    public Boolean getForceAuthn(){ return forceAuthn; }
     public String getSslUrl() {
         return sslUrl;
     }
@@ -1111,6 +1118,9 @@ public class MoSAMLAddIdp extends SecurityRealm {
         return rootURL+"/securityRealm/moLoginAction";
     }
 
+    public String getUsernameCaseConversion() {
+        return usernameCaseConversion;
+    }
     public String getFullnameAttribute() {
         return fullnameAttribute;
     }
@@ -1135,9 +1145,8 @@ public class MoSAMLAddIdp extends SecurityRealm {
 
     private MoSAMLPluginSettings getMoSAMLPluginSettings() {
         MoSAMLPluginSettings settings = new MoSAMLPluginSettings(idpEntityId, ssoUrl, metadataUrl,
-                metadataFilePath, publicx509Certificate, usernameAttribute, emailAttribute, nameIDFormat,
-                sslUrl, loginType, regexPattern, enableRegexPattern, signedRequest, userCreate,
-                ssoBindingType, sloBindingType, fullnameAttribute,samlCustomAttributes,  userAttributeUpdate,
+                metadataFilePath, publicx509Certificate, usernameCaseConversion, usernameAttribute, emailAttribute, nameIDFormat,
+                sslUrl, loginType, regexPattern, enableRegexPattern, signedRequest, userCreate, forceAuthn, ssoBindingType, sloBindingType, fullnameAttribute, samlCustomAttributes, userAttributeUpdate,
                 newUserGroup);
         return settings;
     }
@@ -1235,49 +1244,124 @@ public class MoSAMLAddIdp extends SecurityRealm {
             }
         }
 
-
-        public String getsPEntityID() {
-            String rootURL= Jenkins.getInstance().getRootUrl();
+        public String getBaseUrl() {
+            String rootURL= get().getRootUrl();
             if(rootURL.endsWith("/")){
                 rootURL= rootURL.substring(0,rootURL.length()-1);
             }
             return rootURL;
         }
 
-        public String getAudienceURI() {
-            String rootURL= Jenkins.getInstance().getRootUrl();
-            if(rootURL.endsWith("/")){
-                rootURL= rootURL.substring(0,rootURL.length()-1);
+        public FormValidation doCheckUserAttributeUpdate(@QueryParameter Boolean userAttributeUpdate) {
+            if (! userAttributeUpdate) {
+                return FormValidation.warning("Available in premium version");
             }
-            return rootURL;
+            return FormValidation.ok();
+        }
+        public FormValidation doCheckSignedRequest(@QueryParameter Boolean signedRequest) {
+            if (! signedRequest) {
+                return FormValidation.warning("Available in premium version");
+            }
+            return FormValidation.ok();
         }
 
-        public String getAcsURL() {
-            String rootURL= Jenkins.getInstance().getRootUrl();
-            if(rootURL.endsWith("/")){
-                rootURL= rootURL.substring(0,rootURL.length()-1);
+        public FormValidation doCheckDisableDefaultLogin(@QueryParameter Boolean disableDefaultLogin) {
+            if (! disableDefaultLogin) {
+                return FormValidation.warning("Available in premium version");
             }
-            return rootURL+"/securityRealm/moSamlAuth";
+            return FormValidation.ok();
         }
 
-        public String getSpLogoutURL() {
-            String rootURL= Jenkins.getInstance().getRootUrl();
-            if(rootURL.endsWith("/")){
-                rootURL= rootURL.substring(0,rootURL.length()-1);
+
+        public FormValidation doSupportEmail(@QueryParameter("supportEmail") final String supportEmail) {
+
+            if (!isValidEmailAddress(supportEmail)) {
+                LOGGER.fine("Invalid Support Email");
+                return FormValidation.error("Please enter valid mail Address.");
+            } else if(StringUtils.isEmpty(supportEmail)) {
+                return FormValidation.error("Please enter mail Address.");
+            }else {
+                return FormValidation.ok();
             }
-            return rootURL+"/securityRealm/logout";
         }
+
+        public FormValidation doSendSupportMail(@QueryParameter("supportEmail") final String supportEmail,
+                                                @QueryParameter("supportName") final String supportName,
+                                                @QueryParameter("supportQuery") final String supportQuery
+                                                ) {
+
+
+            if (StringUtils.isEmpty(supportEmail)) {
+                LOGGER.fine("Empty Support Email");
+                return FormValidation.error("Please enter contact mail Address.");
+
+            } else if (StringUtils.isEmpty(supportQuery)) {
+                LOGGER.fine("Empty Support Query");
+                return FormValidation.error("Please enter Query.");
+
+            } else if (!StringUtils.isEmpty(supportEmail)&&!isValidEmailAddress(supportEmail)) {
+                LOGGER.fine("Invalid Support Email");
+
+                return FormValidation.error("Please enter valid mail Address.");
+            } else {
+                try {
+                    LOGGER.fine("Valid Email Address and sending query.");
+
+                    LOGGER.fine("Received Query - reason:" + supportQuery +
+                            ",contact_email:" + supportEmail + ",Name: "+supportName );
+                    //supportEmail = StringUtils.defaultIfEmpty(supportEmail, StringUtils.EMPTY);
+                    LOGGER.fine("Sending Query - reason:" + supportQuery +",contact_email:" + supportEmail+ "");
+                    String content=new String();
+                    content = content + "Hello,<br><br>Email: " + supportEmail + "<br><br>Name: "+supportName+
+                            "<br><br>Plugin Name: " +"Jenkins SAML SSO" ;
+                    content = content + "<br><br>Query Details: "+supportQuery ;
+                    content = content + "<br><br>Thanks<br>Jenkins Admin";
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("customerKey", MoSAMLAddIdp.DEFAULT_CUSTOMER_KEY);
+                    jsonObject.put("sendEmail", true);
+                    JSONObject emailObject = new JSONObject();
+                    emailObject.put("customerKey", MoSAMLAddIdp.DEFAULT_CUSTOMER_KEY);
+                    emailObject.put("fromEmail", "no-reply@xecurify.com");
+                    emailObject.put("bccEmail", "no-reply@xecurify.com");
+                    emailObject.put("fromName", "miniOrange");
+                    emailObject.put("toEmail", "info@xecurify.com");
+                    emailObject.put("toName", "info@xecurify.com");
+                    emailObject.put("bccEmail", "info@xecurify.com");
+                    emailObject.put("subject", "Feedback for " + "Jenkins SAML SSO");
+                    emailObject.put("content", content);
+                    jsonObject.put("email", emailObject);
+                    String json = jsonObject.toString();
+                    String response1 = MoHttpUtils.sendPostRequest(MoSAMLAddIdp.NOTIFY_API, json,
+                            MoHttpUtils.CONTENT_TYPE_JSON, MoHttpUtils.getAuthorizationHeaders(Long.valueOf(MoSAMLAddIdp.DEFAULT_CUSTOMER_KEY),
+                                    MoSAMLAddIdp.DEFAULT_API_KEY));
+                    LOGGER.fine("Send_feedback response: " + response1);
+                    return FormValidation.ok("Message Sent. The miniOrange support will contact soon.");
+                } catch (Exception e) {
+                    return FormValidation.error("Error occurred while sending request.");
+                }
+            }
+        }
+        public static boolean isValidEmailAddress(String email)
+        {
+            String emailRegex = "^[a-zA-Z0-9_+&*-]+(?:\\."+
+                    "[a-zA-Z0-9_+&*-]+)*@" +
+                    "(?:[a-zA-Z0-9-]+\\.)+[a-z" +
+                    "A-Z]{2,7}$";
+
+            Pattern pat = Pattern.compile(emailRegex);
+            if (email == null)
+                return false;
+            return pat.matcher(email).matches();
+        }
+
         public FormValidation doPerformTestConfiguration(@QueryParameter String idpEntityId, @QueryParameter String ssoUrl, @QueryParameter String publicx509Certificate) {
             if(StringUtils.isEmpty(idpEntityId) || StringUtils.isEmpty(ssoUrl) || StringUtils.isEmpty(publicx509Certificate)) {
                 LOGGER.fine("Entity ID is " +  "failed");
                 return FormValidation.error("Save the idp configurations first. Could not perform test config");
             }
             LOGGER.fine("Test config called..");
-            String testConfigUrl = StringUtils.removeEnd(getBaseUrl(),"/") + "/securityRealm/moSamlLogin?from=testidpconfiguration";
+            String testConfigUrl = getBaseUrl() + "/securityRealm/moSamlLogin?from=testidpconfiguration";
             return FormValidation.okWithMarkup("Click " + "<a href='"+ testConfigUrl+ "' target='_blank' >here</a>"+ " to see the test configurations result.");
-        }
-        private String getBaseUrl() {
-            return get().getRootUrl();
         }
 
         public FormValidation doValidateMetadataUrl(@QueryParameter String metadataUrl) {
@@ -1296,6 +1380,15 @@ public class MoSAMLAddIdp extends SecurityRealm {
             }
             return FormValidation.okWithMarkup("Validation successful, please hit save button");
         }
+    }
+    private String loadUserName(String username) {
+        MoSAMLPluginSettings settings = getMoSAMLPluginSettings();
+        if ("lowercase".compareTo(settings.getUsernameCaseConversion()) == 0) {
+            username = username.toLowerCase();
+        } else if ("uppercase".compareTo(settings.getUsernameCaseConversion()) == 0) {
+            username = username.toUpperCase();
+        }
+        return username;
     }
 
 }

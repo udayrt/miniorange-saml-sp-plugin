@@ -115,7 +115,7 @@ public class MoSAMLUtils {
         return response;
     }
 
-  public static AuthnRequest buildAuthnRequest(String issuer, String acsUrl, String destination, String nameIdFormat) {
+  public static AuthnRequest buildAuthnRequest(String issuer, String acsUrl, String destination, String nameIdFormat, Boolean forceAuthn) {
       LOGGER.fine("Building Authentication Request");
       AuthnRequest authnRequest = new AuthnRequestBuilder().buildObject(SAMLConstants.SAML20P_NS,
               AuthnRequest.DEFAULT_ELEMENT_LOCAL_NAME, "samlp");
@@ -127,6 +127,9 @@ public class MoSAMLUtils {
       authnRequest.setIssuer(buildIssuer(issuer));
       authnRequest.setAssertionConsumerServiceURL(acsUrl);
       authnRequest.setDestination(destination);
+      if(forceAuthn){
+          authnRequest.setForceAuthn(forceAuthn);
+      }
       NameIDPolicyBuilder nameIdPolicyBuilder = new NameIDPolicyBuilder();
       NameIDPolicy nameIdPolicy = nameIdPolicyBuilder.buildObject();
       nameIdPolicy.setFormat(nameIdFormat);

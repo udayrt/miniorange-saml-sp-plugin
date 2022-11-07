@@ -338,15 +338,18 @@ public class MoSAMLManager {
            MoSAMLUtils.doBootstrap();
            relayState=StringUtils.substringAfter(relayState,"from=");
            AuthnRequest authnRequest = MoSAMLUtils.buildAuthnRequest(settings.getSPEntityID(),
-                   settings.getSpAcsUrl(), settings.getSsoUrl(), settings.getNameIDFormat());
+                   settings.getSpAcsUrl(), settings.getSsoUrl(), settings.getNameIDFormat(), settings.getForceAuthn());
            if (StringUtils.equals(settings.getSsoBindingType(), "HttpPost")) {
+               response.setContentType("text/html");
                LOGGER.fine("HTTP-POST Binding selected for SSO");
                if (settings.getSignedRequest()) {
                    authnRequest = (AuthnRequest) MoSAMLUtils.signHttpPostRequest(authnRequest,
                            settings.getPublicSPCertificate(), settings.getPrivateSPCertificate());
                }
                String encodedAuthnRequest = MoSAMLUtils.base64EncodeRequest(authnRequest, true);
-               response.getOutputStream().write(encodedAuthnRequest.getBytes(StandardCharsets.UTF_8));
+               String form = createHttpPostRequestForm(settings.getSsoUrl(), encodedAuthnRequest, relayState);
+               LOGGER.fine("form created for post is " + form);
+               response.getOutputStream().write(form.getBytes());
                response.getOutputStream().close();
                return;
            } else {
@@ -375,6 +378,31 @@ public class MoSAMLManager {
            throw new MoSAMLException(MoSAMLException.SAMLErrorCode.UNKNOWN);
        }
    }
+    private String createHttpPostRequestForm(String ssoUrl, String encodedRequest, String relayState) {
+        String form =   "<html>\n" +
+                        "<head>\n" +
+                        "    <script>\n" +
+                        "        initiate();\n" +
+                        "        function initiate() {\n" +
+                        "            var form = document.getElementById('saml-request-form');\n" +
+                        "            if(form){\n" +
+                        "                form.submit();\n" +
+                        "            }else{\n" +
+                        "                setTimeout(initiate,50)\n" +
+                        "            }\n" +
+                        "        }\n" +
+                        "    </script>\n" +
+                        "    </head>\n" +
+                        "\n" +
+                        "<body>Please wait...\n" +
+                        "<form action= \"" + ssoUrl + "\"  method=\"post\" id=\"saml-request-form\">\n" +
+                        "<input type=\"hidden\" name=\"SAMLRequest\" value= \"" + encodedRequest + "\" />\n" +
+                        "<input type=\"hidden\" name=\"RelayState\" value= \""+ relayState +"\"/>\n" +
+                        "</form>\n" +
+                        "</body>\n" +
+                        "</html>";
+        return form;
+    }
     public static void httpRedirect(HttpServletResponse response, String redirectUrl) throws IOException {
         LOGGER.fine("Redirecting user to " + redirectUrl);
         response.sendRedirect(redirectUrl);
@@ -446,14 +474,5 @@ public class MoSAMLManager {
                 .append(URLEncoder.encode(signature, "UTF-8"));
         return builder.toString();
     }
-
-//    private String createHttpPostRequestForm(String ssoUrl, String encodedRequest) {
-//        Map<String, Object> context = new HashMap();
-//        context.put("ssoUrl", ssoUrl);
-//        context.put("encodedRequest", MoSAMLUtils.htmlEncode(encodedRequest));
-//        String form = this.renderer.renderFragment(settings.getSAMLPostRequest(), context);
-//        return form;
-//    }
-
 
 }

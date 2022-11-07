@@ -14,6 +14,8 @@ public class MoSAMLPluginSettings {
     private String metadataFilePath;
     private String publicx509Certificate;
     // Information related to Attribute Mapping
+
+    private String usernameCaseConversion;
     private String usernameAttribute;
     private String emailAttribute;
     private String nameIDFormat;
@@ -23,6 +25,7 @@ public class MoSAMLPluginSettings {
     private Boolean enableRegexPattern;
     private Boolean signedRequest;
     private Boolean userCreate;
+    private Boolean forceAuthn;
     private String  ssoBindingType;
     private String sloBindingType;
     private String fullnameAttribute;
@@ -54,17 +57,18 @@ public class MoSAMLPluginSettings {
         }
     }
     public MoSAMLPluginSettings (String idpEntityId, String ssoUrl, String metadataUrl, String metadataFilePath,
-                                 String publicx509Certificate,
+                                 String publicx509Certificate, String usernameCaseConversion,
                                  String usernameAttribute, String emailAttribute,
                                  String nameIDFormat, String sslUrl, String loginType,
                                  String regexPattern, Boolean enableRegexPattern, Boolean signedRequest,
-                                 Boolean userCreate ,String ssoBindingType,String sloBindingType,
+                                 Boolean userCreate , Boolean forceAuthn, String ssoBindingType,String sloBindingType,
                                  String fullnameAttribute, List<MoAttributeEntry> samlCustomAttributes, Boolean userAttributeUpdate, String newUserGroup) {
         this.idpEntityId = idpEntityId;
         this.ssoUrl = ssoUrl;
         this.metadataUrl= metadataUrl;
         this.metadataFilePath = metadataFilePath;
         this.publicx509Certificate = publicx509Certificate;
+        this.usernameCaseConversion = usernameCaseConversion;
         this.usernameAttribute = usernameAttribute;
         this.emailAttribute = emailAttribute;
         this.nameIDFormat= nameIDFormat;
@@ -74,6 +78,7 @@ public class MoSAMLPluginSettings {
         this.enableRegexPattern= enableRegexPattern;
         this.signedRequest= signedRequest;
         this.userCreate = userCreate;
+        this.forceAuthn = forceAuthn;
         this.ssoBindingType= ssoBindingType;
         this.sloBindingType =sloBindingType;
         this.fullnameAttribute= fullnameAttribute;
@@ -94,6 +99,10 @@ public class MoSAMLPluginSettings {
 
     public String getX509PublicCertificate() {
         return publicx509Certificate;
+    }
+
+    public String getUsernameCaseConversion() {
+        return usernameCaseConversion;
     }
 
     public String getUsernameAttribute() {
@@ -171,6 +180,8 @@ public class MoSAMLPluginSettings {
     public String getSupportContactEmail() { return "info@xecurify.com"; }
 
     public Boolean getUserCreate() { return userCreate; }
+
+    public Boolean getForceAuthn() { return forceAuthn; }
 
     public String getPublicSPCertificate(){ return MoSAMLUtils.serializePublicCertificate(PUBLIC_CERTIFICATE); }
 
