@@ -133,6 +133,12 @@
             <f:textbox placeholder="Available in premium version" disabled="true"/>
         </f:entry>
 
+        <h4>OR</h4>
+
+        <f:entry title="${%Map first name and last name as separate attribute ?}" field="splitnameAttribute" >
+            <f:checkbox onclick="return false" checked="false"/>
+        </f:entry>
+
         <f:entry title="${%Apply regex Pattern to the UserName: }" field="enableRegexPattern">
             <f:checkbox/>
         </f:entry>
@@ -177,6 +183,11 @@
         <f:entry title="Force Authentication" field="forceAuthn" help="/plugin/saml/help/forceAuthn.html">
             <f:checkbox/>
         </f:entry>
+
+        <f:entry title="Authentication Context Class" field="authnContextClass">
+            <f:textbox placeholder="Enter Authentication Context. Keep empty if not required."/>
+        </f:entry>
+
 
         <f:entry title="${%Update Attributes of Existing Users ? }" field="userAttributeUpdate">
             <f:checkbox onclick="return false"/>

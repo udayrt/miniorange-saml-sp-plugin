@@ -124,6 +124,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
     private final String regexPattern;
     private final Boolean enableRegexPattern;
     private final Boolean signedRequest;
+    private final Boolean splitnameAttribute;
     private final Boolean userCreate;
     private final Boolean forceAuthn;
     private final String ssoBindingType;
@@ -131,6 +132,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
     private List<MoAttributeEntry> samlCustomAttributes;
     private final Boolean disableDefaultLogin;
     private String newUserGroup;
+    private String authnContextClass;
 
 
     @DataBoundConstructor
@@ -149,6 +151,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
                         String regexPattern,
                         Boolean enableRegexPattern,
                         Boolean signedRequest,
+                        Boolean splitnameAttribute,
                         Boolean userCreate,
                         Boolean forceAuthn,
                         String ssoBindingType,
@@ -156,8 +159,9 @@ public class MoSAMLAddIdp extends SecurityRealm {
                         List<MoAttributeEntry> samlCustomAttributes,
                         Boolean userAttributeUpdate,
                         Boolean disableDefaultLogin,
-                        String newUserGroup
-    ) {
+                        String newUserGroup,
+                        String authnContextClass
+    ) throws Exception {
         super();
         this.metadataUrl = metadataUrl;
         this.metadataFilePath = metadataFilePath;
@@ -182,6 +186,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
 
         }
         else{
+            manualConfig(idpEntityId,ssoUrl,publicx509Certificate);
             this.idpEntityId = idpEntityId;
             this.ssoUrl = ssoUrl;
             this.nameIDFormat = nameIDFormat;
@@ -189,13 +194,14 @@ public class MoSAMLAddIdp extends SecurityRealm {
             this.publicx509Certificate = publicx509Certificate;
         }
 
-        this.usernameCaseConversion = usernameCaseConversion;
+        this.usernameCaseConversion = (usernameCaseConversion != null) ? usernameCaseConversion : "none";
         this.usernameAttribute = (usernameAttribute != null && !usernameAttribute.trim().equals("")) ? usernameAttribute : "NameID";
         this.emailAttribute = (emailAttribute != null && !emailAttribute.trim().equals("")) ? emailAttribute : "NameID";
         this.loginType = (loginType != null) ? loginType : "usernameLogin";
         this.regexPattern = regexPattern;
         this.enableRegexPattern = (enableRegexPattern != null) ? enableRegexPattern : false;
-        this.signedRequest = (signedRequest != null) ? signedRequest : true;
+        this.signedRequest = (signedRequest != null) ? signedRequest : false;
+        this.splitnameAttribute = (splitnameAttribute != null) ? splitnameAttribute : false;
         this.userCreate = (userCreate != null) ? userCreate : false;
         this.forceAuthn = (forceAuthn != null) ? forceAuthn : false;
         this.ssoBindingType = (ssoBindingType != null) ? ssoBindingType : "HttpRedirect";
@@ -205,6 +211,14 @@ public class MoSAMLAddIdp extends SecurityRealm {
         this.fullnameAttribute = fullnameAttribute;
         this.disableDefaultLogin = (disableDefaultLogin != null) ? disableDefaultLogin : false;
         this.newUserGroup= newUserGroup;
+        this.authnContextClass=(authnContextClass != null) ? authnContextClass : "None";
+    }
+
+    private void manualConfig(String idpEntityId, String ssoUrl, String publicx509Certificate) throws Exception {
+        if(StringUtils.isEmpty(idpEntityId)||StringUtils.isEmpty(ssoUrl) || StringUtils.isEmpty(publicx509Certificate) ){
+            LOGGER.fine("Could not save IDP configurations");
+            throw new Exception("Can not save IDP configurations");
+        }
     }
 
 
@@ -358,7 +372,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
 
         LOGGER.fine("in doMoSamlLogin");
         MoSAMLManager moSAMLManager = new MoSAMLManager(getMoSAMLPluginSettings());
-        moSAMLManager.createAuthnRequestAndRedirect(request, response, redirectOnFinish);
+        moSAMLManager.createAuthnRequestAndRedirect(request, response, redirectOnFinish,getMoSAMLPluginSettings());
     }
 
     private String getBaseUrl() {
@@ -660,7 +674,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         }
     }
 
-    public static List<String> configureFromMetadata(String metadata) {
+    public static List<String> configureFromMetadata(String metadata) throws Exception {
 
         List<String> metadataUrlValues = new ArrayList<String>();
         metadata = metadata.replaceAll("[^\\x20-\\x7e]", "");
@@ -704,7 +718,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
             metadataUrlValues.add(x509Certificate);
         } catch (Exception e) {
             LOGGER.fine("Error Occured while updating attributes" + e);
-            return null;
+            throw new Exception("Can not save IDP configurations", e);
         }
         return metadataUrlValues;
     }
@@ -730,7 +744,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         MoSAMLTemplateManager moSAMLTemplateManager = new MoSAMLTemplateManager(getMoSAMLPluginSettings());
 
         try {
-            MoSAMLResponse = moSAMLManager.readSAMLResponse(request, response);
+            MoSAMLResponse = moSAMLManager.readSAMLResponse(request, response,settings);
 
             if (StringUtils.contains(relayState, "testidpconfiguration")) {
                 LOGGER.fine("Showing Test Configuration Result");
@@ -1049,6 +1063,9 @@ public class MoSAMLAddIdp extends SecurityRealm {
         return BooleanUtils.toBooleanDefaultIfNull(signedRequest, true);
     }
 
+    public Boolean getSplitnameAttribute() {
+        return BooleanUtils.toBooleanDefaultIfNull(splitnameAttribute, false);
+    }
     public Boolean getUserCreate() {
         return userCreate;
     }
@@ -1129,6 +1146,21 @@ public class MoSAMLAddIdp extends SecurityRealm {
         return userAttributeUpdate;
     }
 
+    public String getNewUserGroup() {
+        return newUserGroup;
+    }
+
+    public void setNewUserGroup(String newUserGroup) {
+        this.newUserGroup = newUserGroup;
+    }
+
+    public String getAuthnContextClass() {
+        return authnContextClass;
+    }
+
+    public void setAuthnContextClass(String authnContextClass) {
+        this.authnContextClass = authnContextClass;
+    }
 
     @NonNull
     public List<MoAttributeEntry> getSamlCustomAttributes() {
@@ -1147,7 +1179,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         MoSAMLPluginSettings settings = new MoSAMLPluginSettings(idpEntityId, ssoUrl, metadataUrl,
                 metadataFilePath, publicx509Certificate, usernameCaseConversion, usernameAttribute, emailAttribute, nameIDFormat,
                 sslUrl, loginType, regexPattern, enableRegexPattern, signedRequest, userCreate, forceAuthn, ssoBindingType, sloBindingType, fullnameAttribute, samlCustomAttributes, userAttributeUpdate,
-                newUserGroup);
+                newUserGroup,authnContextClass);
         return settings;
     }
 
@@ -1265,6 +1297,9 @@ public class MoSAMLAddIdp extends SecurityRealm {
             return FormValidation.ok();
         }
 
+        public FormValidation doCheckSplitnameAttribute(@QueryParameter Boolean splitnameAttribute) {
+                return FormValidation.warning("Available in premium version");
+        }
         public FormValidation doCheckDisableDefaultLogin(@QueryParameter Boolean disableDefaultLogin) {
             if (! disableDefaultLogin) {
                 return FormValidation.warning("Available in premium version");
@@ -1285,7 +1320,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
             }
         }
 
-        public FormValidation doSendSupportMail(@QueryParameter("supportEmail") final String supportEmail,
+            public FormValidation doSendSupportMail(@QueryParameter("supportEmail") final String supportEmail,
                                                 @QueryParameter("supportName") final String supportName,
                                                 @QueryParameter("supportQuery") final String supportQuery
                                                 ) {
@@ -1364,18 +1399,22 @@ public class MoSAMLAddIdp extends SecurityRealm {
             return FormValidation.okWithMarkup("Click " + "<a href='"+ testConfigUrl+ "' target='_blank' >here</a>"+ " to see the test configurations result.");
         }
 
-        public FormValidation doValidateMetadataUrl(@QueryParameter String metadataUrl) {
+        public FormValidation doValidateMetadataUrl(@QueryParameter String metadataUrl) throws Exception {
             String metadata = sendGetRequest(metadataUrl);
-            List<String> metadataUrlValues = configureFromMetadata(metadata);
-            if (metadataUrlValues == null) {
+            try{
+                List<String> metadataUrlValues = configureFromMetadata(metadata);
+            }catch (Exception e){
+                LOGGER.fine("Invalid metadata Url" + e);
                 return FormValidation.error("Invalid metadata Url");
             }
             return FormValidation.okWithMarkup("Valid metadata Url, please hit save button");
         }
-        public FormValidation doValidateMetadataFile(@QueryParameter String metadataFilePath) {
+        public FormValidation doValidateMetadataFile(@QueryParameter String metadataFilePath) throws Exception {
             String metadata = getMetadataFromFile(metadataFilePath);
-            List<String> metadataUrlValues = configureFromMetadata(metadata);
-            if (metadataUrlValues == null) {
+            try{
+                List<String> metadataUrlValues = configureFromMetadata(metadata);
+            }catch (Exception e){
+                LOGGER.fine("File not found or wrong file extension");
                 return FormValidation.error("File not found or wrong file extension");
             }
             return FormValidation.okWithMarkup("Validation successful, please hit save button");

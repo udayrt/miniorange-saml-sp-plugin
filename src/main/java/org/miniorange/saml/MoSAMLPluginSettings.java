@@ -33,6 +33,7 @@ public class MoSAMLPluginSettings {
     private List<MoAttributeEntry> samlCustomAttributes;
     private Boolean  userAttributeUpdate;
     private String newUserGroup;
+    private String authnContextClass;
 
     private static final String PRIVATE_CERT_PATH = "/certificates/sp-key.key";
     private static final String PUBLIC_CERT_PATH = "/certificates/sp-certificate.crt";
@@ -62,29 +63,30 @@ public class MoSAMLPluginSettings {
                                  String nameIDFormat, String sslUrl, String loginType,
                                  String regexPattern, Boolean enableRegexPattern, Boolean signedRequest,
                                  Boolean userCreate , Boolean forceAuthn, String ssoBindingType,String sloBindingType,
-                                 String fullnameAttribute, List<MoAttributeEntry> samlCustomAttributes, Boolean userAttributeUpdate, String newUserGroup) {
+                                 String fullnameAttribute, List<MoAttributeEntry> samlCustomAttributes, Boolean userAttributeUpdate, String newUserGroup,String authnContextClass) {
         this.idpEntityId = idpEntityId;
         this.ssoUrl = ssoUrl;
         this.metadataUrl= metadataUrl;
         this.metadataFilePath = metadataFilePath;
         this.publicx509Certificate = publicx509Certificate;
-        this.usernameCaseConversion = usernameCaseConversion;
-        this.usernameAttribute = usernameAttribute;
-        this.emailAttribute = emailAttribute;
-        this.nameIDFormat= nameIDFormat;
+        this.usernameCaseConversion = (usernameCaseConversion != null) ? usernameCaseConversion : "none";
+        this.usernameAttribute = (usernameAttribute != null && !usernameAttribute.trim().equals("")) ? usernameAttribute : "NameID";
+        this.emailAttribute = (emailAttribute != null && !emailAttribute.trim().equals("")) ? emailAttribute : "NameID";
+        this.nameIDFormat= (nameIDFormat != null) ? nameIDFormat : "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified";
         this.sslUrl= sslUrl;
         this.loginType = (loginType != null) ? loginType : "usernameLogin";
         this.regexPattern= regexPattern;
-        this.enableRegexPattern= enableRegexPattern;
-        this.signedRequest= signedRequest;
-        this.userCreate = userCreate;
-        this.forceAuthn = forceAuthn;
-        this.ssoBindingType= ssoBindingType;
-        this.sloBindingType =sloBindingType;
+        this.enableRegexPattern= (enableRegexPattern != null) ? enableRegexPattern : false;;
+        this.signedRequest= (signedRequest != null) ? signedRequest : false;
+        this.userCreate = (userCreate != null) ? userCreate : false;
+        this.forceAuthn = (forceAuthn != null) ? forceAuthn : false;
+        this.ssoBindingType = (ssoBindingType != null) ? ssoBindingType : "HttpRedirect";
+        this.sloBindingType =  (sloBindingType != null) ? sloBindingType : "HttpRedirect";
         this.fullnameAttribute= fullnameAttribute;
-        this.userAttributeUpdate= userAttributeUpdate;
+        this.userAttributeUpdate= (userAttributeUpdate != null) ? userAttributeUpdate : false;
         this.newUserGroup= newUserGroup;
         this.samlCustomAttributes = samlCustomAttributes;
+        this.authnContextClass= (authnContextClass != null) ? authnContextClass : "None";
     }
 
 
@@ -207,6 +209,11 @@ public class MoSAMLPluginSettings {
         }
         return samlCustomAttributes; }
 
+    public String getAuthnContextClass() {
+        return authnContextClass;
+    }
 
-
+    public void setAuthnContextClass(String authnContextClass) {
+        this.authnContextClass = authnContextClass;
+    }
 }

@@ -1,5 +1,6 @@
 package org.miniorange.saml;
 
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import org.apache.xml.security.signature.XMLSignature;
@@ -35,7 +36,7 @@ public class MoSAMLManager {
         this.settings = settings;
     }
 
-        public MoSAMLResponse readSAMLResponse(HttpServletRequest request, HttpServletResponse response) {
+        public MoSAMLResponse readSAMLResponse(HttpServletRequest request, HttpServletResponse response, MoSAMLPluginSettings settings) {
         try {
 
             MoSAMLUtils.doBootstrap();
@@ -332,13 +333,13 @@ public class MoSAMLManager {
         errorMsg.append(found);
         return errorMsg.toString();
     }
-   public void createAuthnRequestAndRedirect(HttpServletRequest request, HttpServletResponse response, String relayState) {
+   public void createAuthnRequestAndRedirect(HttpServletRequest request, HttpServletResponse response, String relayState,MoSAMLPluginSettings settings) {
        try {
            LOGGER.fine("Creating Authentication Request and rediecting user to Idp for authentication");
            MoSAMLUtils.doBootstrap();
            relayState=StringUtils.substringAfter(relayState,"from=");
            AuthnRequest authnRequest = MoSAMLUtils.buildAuthnRequest(settings.getSPEntityID(),
-                   settings.getSpAcsUrl(), settings.getSsoUrl(), settings.getNameIDFormat(), settings.getForceAuthn());
+                   settings.getSpAcsUrl(), settings.getSsoUrl(), settings.getNameIDFormat(), BooleanUtils.toBooleanDefaultIfNull(settings.getForceAuthn(),false),StringUtils.defaultString(settings.getAuthnContextClass(),"None"));
            if (StringUtils.equals(settings.getSsoBindingType(), "HttpPost")) {
                response.setContentType("text/html");
                LOGGER.fine("HTTP-POST Binding selected for SSO");
