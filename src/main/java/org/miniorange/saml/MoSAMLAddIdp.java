@@ -130,7 +130,6 @@ public class MoSAMLAddIdp extends SecurityRealm {
     private final String ssoBindingType;
     private final String sloBindingType;
     private List<MoAttributeEntry> samlCustomAttributes;
-    private final Boolean disableDefaultLogin;
     private String newUserGroup;
     private String authnContextClass;
 
@@ -158,7 +157,6 @@ public class MoSAMLAddIdp extends SecurityRealm {
                         String sloBindingType,
                         List<MoAttributeEntry> samlCustomAttributes,
                         Boolean userAttributeUpdate,
-                        Boolean disableDefaultLogin,
                         String newUserGroup,
                         String authnContextClass
     ) throws Exception {
@@ -209,7 +207,6 @@ public class MoSAMLAddIdp extends SecurityRealm {
         this.samlCustomAttributes = samlCustomAttributes;
         this.userAttributeUpdate = (userAttributeUpdate != null) ? userAttributeUpdate : false;
         this.fullnameAttribute = fullnameAttribute;
-        this.disableDefaultLogin = (disableDefaultLogin != null) ? disableDefaultLogin : false;
         this.newUserGroup= newUserGroup;
         this.authnContextClass=(authnContextClass != null) ? authnContextClass : "None";
     }
@@ -224,9 +221,6 @@ public class MoSAMLAddIdp extends SecurityRealm {
 
     @Override
     public String getLoginUrl() {
-        if (getDisableDefaultLogin()) {
-            return "securityRealm/moSamlLogin";
-        }
         return "securityRealm/moLogin";
     }
 
@@ -244,9 +238,6 @@ public class MoSAMLAddIdp extends SecurityRealm {
     @Override
     public String getPostLogOutUrl(StaplerRequest req, Authentication auth) {
 
-        if (this.disableDefaultLogin) {
-            return "/securityRealm/loggedOut";
-        }
         return "/securityRealm/moLogin";
     }
 
@@ -1050,10 +1041,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
     }
 
 
-
-    public Boolean getDisableDefaultLogin() {
-        return disableDefaultLogin;
-    }
+    
 
     public String getNameIDFormat() {
         return nameIDFormat;
