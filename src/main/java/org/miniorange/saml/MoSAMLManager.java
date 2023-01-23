@@ -84,7 +84,7 @@ public class MoSAMLManager {
             MoSAMLException t = null;
             Boolean verified = Boolean.FALSE;
             try {
-                verified = verifyCertificate(samlResponse, assertion, settings.getX509PublicCertificate());
+                verified = verifyCertificate(samlResponse, assertion, settings.getPublicx509Certificate());
                 LOGGER.fine("Verified Certificates:"+verified);
             } catch (MoSAMLException e) {
                 t = e;

@@ -1,0 +1,242 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form" xmlns:i="jelly:fmt" xmlns:st="jelly:stapler" xmlns:l="/lib/layout">
+
+    <l:layout permission="${app.SYSTEM_READ}" title="${%miniOrange Saml SSO}" norefresh="true">
+        <st:include it="${app}" page="sidepanel.jelly"/>
+        <l:main-panel>
+            <f:section title="Miniorange Saml SP plugin configuration"></f:section>
+
+            <!--            To access any function in MoPluginConfigView ... use as below described -->
+            <!--            ${it.descriptor.getfoo()} -->
+            <!--            ${it.getfoo()}
+            -->
+
+            <j:set var="securityRealm" value="${it.realm}"/>
+            <f:section title="SP Configuration" descriptor="${securityRealm.descriptor}">
+                <j:set var="jvar_baseUrl" value="${securityRealm.descriptor.getBaseUrl()}"/>
+                <f:entry title="SP Entity ID:" field="sPEntityID">
+                    <f:textbox default="${jvar_baseUrl}" disabled="true"/>
+                </f:entry>
+
+                <f:entry title="Audience URI:" field="audienceURI">
+                    <f:textbox default="${jvar_baseUrl}" disabled="true"/>
+                </f:entry>
+
+                <f:entry title="ACS URL:" field="acsURL">
+                    <f:textbox default="${jvar_baseUrl}/securityRealm/moSamlAuth" disabled="true"/>
+                </f:entry>
+
+                <f:entry title="SP Logout URL: " field="spLogoutURL">
+                    <f:textbox default="${jvar_baseUrl}/securityRealm/logout" disabled="true"/>
+                </f:entry>
+
+                <f:block>
+                    <a href="../securityRealm/mospmetadata">Service Provider Metadata</a>
+                    and
+                    <a href="../securityRealm/downloadCertificate">Download SP Certificate</a>
+                    required to setup your IDP.(Based on your last saved settings.)
+                </f:block>
+            </f:section>
+            <f:form method="post" action="saveConfiguration" name="replace" descriptor="${securityRealm.descriptor}">
+
+                <f:section title="IDP configuration">
+
+                    <h4>I will enter metadata url</h4>
+                    <f:entry title="Enter metadata url:" field="metadataUrl">
+                        <f:textbox placeholder="Enter metadata url" default="${securityRealm.getMetadataUrl()}"/>
+                    </f:entry>
+
+                    <f:validateButton
+                            title="${%Validate metadata Url}" progress="${%validating...}"
+                            method="validateMetadataUrl" with="metadataUrl"
+                    />
+
+                    <h4>OR</h4>
+
+                    <h4>I will enter metadata file path</h4>
+
+                    <f:entry title="IDP Metadata:" field="metadataFilePath">
+                        <f:textbox placeholder="Enter the path for Idp metadata file"
+                                   default="${securityRealm.getMetadataFilePath()}"/>
+                    </f:entry>
+                    <f:validateButton
+                            title="${%Validate metadata File}" progress="${%validating...}"
+                            method="validateMetadataFile" with="metadataFilePath"
+                    />
+
+                    <h4>OR</h4>
+
+                    <h4>I will do manual configuration</h4>
+
+                    <f:entry title="IDP Entity ID / Issuer:" field="idpEntityId">
+                        <f:textbox placeholder="Enter Entity ID / Issuer" default="${securityRealm.getIdpEntityId()}"/>
+                    </f:entry>
+
+                    <f:entry title="Single Sign On URL:" field="ssoUrl">
+                        <f:textbox placeholder="Enter Single Sign On URL" default="${securityRealm.getSsoUrl()}"/>
+                    </f:entry>
+
+                    <f:entry title="Single Logout URL:" field="sslUrl">
+                        <f:textbox placeholder="Available in premium version" disabled="true"/>
+                    </f:entry>
+
+                    <f:entry name="nameIDFormat" title="Name ID Format:" field="nameIDFormat">
+                        <select name="nameIDFormat" style="width: 100%;">
+                            <f:option value="urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+                                      selected="${securityRealm.getNameIDFormat() == 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'}">
+                                urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified
+                            </f:option>
+                            <f:option value="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"
+                                      selected="${securityRealm.getNameIDFormat() == 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress'}">
+                                urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress
+                            </f:option>
+                            <f:option value="urn:oasis:names:tc:SAML:1.1:nameid-format:persistent"
+                                      selected="${securityRealm.getNameIDFormat() == 'urn:oasis:names:tc:SAML:1.1:nameid-format:persistent'}">
+                                urn:oasis:names:tc:SAML:1.1:nameid-format:persistent
+                            </f:option>
+                            <f:option value="urn:oasis:names:tc:SAML:1.1:nameid-format:transient"
+                                      selected="${securityRealm.getNameIDFormat() == 'urn:oasis:names:tc:SAML:1.1:nameid-format:transient'}">
+                                urn:oasis:names:tc:SAML:1.1:nameid-format:transient
+                            </f:option>
+                        </select>
+                    </f:entry>
+
+                    <f:entry title="IDP Signing Certificate:" field="publicx509Certificate">
+                        <f:textarea size="4" placeholder="Enter IDP Signing Certificate:"
+                                    default="${securityRealm.getPublicx509Certificate()}"/>
+                    </f:entry>
+
+                    <f:validateButton
+                            title="${%Test Configuration}" progress="${%validating...}"
+                            method="performTestConfiguration" with="idpEntityId,ssoUrl,publicx509Certificate"
+                    />
+                </f:section>
+
+                <f:section title="User Profile Configuration">
+                    <f:entry name="loginType" title="Login Jenkins account by:" field="loginType"
+                             description="Available in premium version">
+                        <select name="loginType" style="pointer-events: none">
+                            <f:option value="usernameLogin" selected="${instance.loginType == 'usernameLogin'}">User
+                                Name
+                            </f:option>
+                        </select>
+                    </f:entry>
+
+
+                    <f:entry title="Username Case Conversion" field="usernameCaseConversion"
+                             help="/plugin/saml/help/usernameCaseConversion.html">
+                        <select name="usernameCaseConversion">
+                            <f:option value="none" selected="${securityRealm.getUsernameCaseConversion() == 'none'}">
+                                None
+                            </f:option>
+                            <f:option value="lowercase"
+                                      selected="${securityRealm.getUsernameCaseConversion() == 'lowercase'}">Lowercase
+                            </f:option>
+                            <f:option value="uppercase"
+                                      selected="${securityRealm.getUsernameCaseConversion() == 'uppercase'}">Uppercase
+                            </f:option>
+                        </select>
+                    </f:entry>
+
+                    <f:entry title="Username Attribute:" field="usernameAttribute">
+                        <f:textbox placeholder="Enter Username Attribute"
+                                   default="${securityRealm.getUsernameAttribute()}"/>
+                    </f:entry>
+
+                    <f:entry title="Email Attribute:" field="emailAttribute">
+                        <f:textbox placeholder="Enter email attribute" default="${securityRealm.getEmailAttribute()}"/>
+                    </f:entry>
+
+                    <f:entry title="Full Name Attribute" field="fullnameAttribute">
+                        <f:textbox placeholder="Available in premium version" disabled="true"/>
+                    </f:entry>
+
+                    <h4>OR</h4>
+
+                    <f:entry title="${%Map first name and last name as separate attribute ?}"
+                             field="splitnameAttribute">
+                        <f:checkbox onclick="return false" checked="false"/>
+                    </f:entry>
+
+                    <f:entry title="${%Apply regex Pattern to the UserName: }" field="enableRegexPattern">
+                        <f:checkbox checked="${securityRealm.getEnableRegexPattern()}"/>
+                    </f:entry>
+
+                    <f:entry title="REGEX Pattern:" field="regexPattern">
+                        <f:textbox placeholder="Enter REGEX Pattern" default="${securityRealm.getRegexPattern()}"/>
+                    </f:entry>
+                </f:section>
+
+                <f:section title="Advanced Configurations">
+
+                    <f:entry field="ssoBindingType" title="SSO Binding Type">
+                        <select name="ssoBindingType">
+                            <f:option value="HttpRedirect"
+                                      selected="${securityRealm.getSsoBindingType() == 'HttpRedirect'}">HTTP-Redirect
+                            </f:option>
+                            <f:option value="HttpPost"
+                                      selected="${securityRealm.getSsoBindingType() == 'HttpPost'}">HTTP-POST
+                            </f:option>
+                        </select>
+                    </f:entry>
+
+                    <f:entry field="sloBindingType" title="SLO Binding Type" description="Available in premium version">
+                        <select name="sloBindingType" style="pointer-events: none">
+                            <f:option value="HttpRedirect"
+                                      selected="${instance.ssoBindingType == 'HttpRedirect'}">HTTP-Redirect
+                            </f:option>
+                        </select>
+                    </f:entry>
+
+                    <f:entry title="${%Send Signed Request ? }" field="signedRequest">
+                        <f:checkbox onclick="return false"/>
+                    </f:entry>
+
+                    <f:entry title="${%Create new user after SSO? }" field="userCreate">
+                        <f:checkbox checked="${securityRealm.getUserCreate()}"/>
+                    </f:entry>
+
+                    <f:entry title="Force Authentication" field="forceAuthn" help="/plugin/saml/help/forceAuthn.html">
+                        <f:checkbox checked="${securityRealm.getForceAuthn()}"/>
+                    </f:entry>
+
+                    <f:entry title="Authentication Context Class" field="authnContextClass">
+                        <f:textbox placeholder="Enter Authentication Context. Keep empty if not required."
+                                   default="${securityRealm.getAuthnContextClass()}"/>
+                    </f:entry>
+
+                    <f:entry title="${%Update Attributes of Existing Users ? }" field="userAttributeUpdate">
+                        <f:checkbox onclick="return false"/>
+                    </f:entry>
+
+                    <f:entry title="Custom Attributes"
+                             field="samlCustomAttributes">
+                        <f:hetero-list name="samlCustomAttribute" hasHeader="true"
+                                       items="${securityRealm.samlCustomAttributes}"
+                                       menuAlign="tl-bl"
+                                       addCaption="${%Add Custom Attribute}"
+                                       descriptors="${securityRealm.descriptor.getPropertyType(instance,'samlCustomAttributes').getApplicableItemDescriptors()}"
+                        />
+                    </f:entry>
+
+                    <f:entry title="Assign group to new Users" field="newUserGroup">
+                        <f:textbox placeholder="Available in premium version" disabled="true"/>
+                    </f:entry>
+
+                    <f:entry title="${%Disable Default Login ? }" field="disableDefaultLogin">
+                        <f:checkbox onclick="return false"/>
+                    </f:entry>
+                </f:section>
+
+                <l:isAdmin>
+                    <f:bottomButtonBar>
+                        <f:submit value="${%Save}"/>
+                        <f:apply/>
+                    </f:bottomButtonBar>
+                </l:isAdmin>
+
+            </f:form>
+        </l:main-panel>
+    </l:layout>
+    `
+</j:jelly>

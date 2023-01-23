@@ -51,4 +51,10 @@ public class MoAttribute extends MoAttributeEntry{
     public int hashCode() {
         return Objects.hash(name, displayName);
     }
+    @Override
+    public String toString() {
+        return "MoAttribute{" + "name='" + getName() + '\''
+                + ", displayAttributeName='" + getDisplayName() +
+                " '}";
+    }
 }

@@ -1,8 +1,9 @@
 package org.miniorange.saml;
 
-import hudson.model.BooleanParameterDefinition;
+import net.sf.json.JSONArray;
 import org.apache.commons.io.FileUtils;
-import org.miniorange.saml.MoIDPMetadata;
+import org.kohsuke.accmod.Restricted;
+import org.kohsuke.accmod.restrictions.NoExternalUse;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Util;
 import hudson.util.Secret;
@@ -40,7 +41,7 @@ import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.nio.file.Files;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -67,7 +68,6 @@ import org.w3c.dom.Element;
 import static jenkins.model.Jenkins.get;
 
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.CloseableHttpClient;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -133,8 +133,6 @@ public class MoSAMLAddIdp extends SecurityRealm {
     private String newUserGroup;
     private String authnContextClass;
 
-
-    @DataBoundConstructor
     public MoSAMLAddIdp(String idpEntityId,
                         String ssoUrl,
                         String metadataUrl,
@@ -184,7 +182,6 @@ public class MoSAMLAddIdp extends SecurityRealm {
 
         }
         else{
-            manualConfig(idpEntityId,ssoUrl,publicx509Certificate);
             this.idpEntityId = idpEntityId;
             this.ssoUrl = ssoUrl;
             this.nameIDFormat = nameIDFormat;
@@ -200,7 +197,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         this.enableRegexPattern = (enableRegexPattern != null) ? enableRegexPattern : false;
         this.signedRequest = (signedRequest != null) ? signedRequest : false;
         this.splitnameAttribute = (splitnameAttribute != null) ? splitnameAttribute : false;
-        this.userCreate = (userCreate != null) ? userCreate : false;
+        this.userCreate = (userCreate != null) ? userCreate : true;
         this.forceAuthn = (forceAuthn != null) ? forceAuthn : false;
         this.ssoBindingType = (ssoBindingType != null) ? ssoBindingType : "HttpRedirect";
         this.sloBindingType =  (sloBindingType != null) ? sloBindingType : "HttpRedirect";
@@ -210,14 +207,6 @@ public class MoSAMLAddIdp extends SecurityRealm {
         this.newUserGroup= newUserGroup;
         this.authnContextClass=(authnContextClass != null) ? authnContextClass : "None";
     }
-
-    private void manualConfig(String idpEntityId, String ssoUrl, String publicx509Certificate) throws Exception {
-        if(StringUtils.isEmpty(idpEntityId)||StringUtils.isEmpty(ssoUrl) || StringUtils.isEmpty(publicx509Certificate) ){
-            LOGGER.fine("Could not save IDP configurations");
-            throw new Exception("Can not save IDP configurations");
-        }
-    }
-
 
     @Override
     public String getLoginUrl() {
@@ -237,8 +226,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
 
     @Override
     public String getPostLogOutUrl(StaplerRequest req, Authentication auth) {
-
-        return "/securityRealm/moLogin";
+        return req.getContextPath() + "/securityRealm/moLogin?from=" + req.getContextPath();
     }
 
     public HttpResponse doMoLogin(final StaplerRequest request, final StaplerResponse response, String errorMessage) {
@@ -1040,9 +1028,6 @@ public class MoSAMLAddIdp extends SecurityRealm {
         request.getSession(true);
     }
 
-
-    
-
     public String getNameIDFormat() {
         return nameIDFormat;
     }
@@ -1175,8 +1160,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         MoSAMLManager moSAMLManager = new MoSAMLManager(getMoSAMLPluginSettings());
         return moSAMLManager;
     }
-
-
+    public static final MoSAMLAddIdp.DescriptorImpl DESCRIPTOR = new MoSAMLAddIdp.DescriptorImpl();
 
     @Extension
     public static final class DescriptorImpl extends Descriptor<SecurityRealm> {
@@ -1194,6 +1178,133 @@ public class MoSAMLAddIdp extends SecurityRealm {
             return "miniOrange SAML 2.0";
         }
 
+        public Boolean checkFormHasData(net.sf.json.JSONObject formData){
+
+            return  formData.has("idpEntityId") &&
+                    formData.has("ssoUrl") &&
+                    formData.has("metadataUrl") &&
+                    formData.has("metadataFilePath") &&
+                    formData.has("publicx509Certificate") &&
+                    formData.has("usernameCaseConversion") &&
+                    formData.has("usernameAttribute") &&
+                    formData.has("emailAttribute") &&
+                    formData.has("fullnameAttribute") &&
+                    formData.has("nameIDFormat") &&
+                    formData.has("sslUrl") &&
+                    formData.has("loginType") &&
+                    formData.has("regexPattern") &&
+                    formData.has("enableRegexPattern") &&
+                    formData.has("signedRequest") &&
+                    formData.has("splitnameAttribute") &&
+                    formData.has("userCreate") &&
+                    formData.has("forceAuthn") &&
+                    formData.has("ssoBindingType") &&
+                    formData.has("sloBindingType") &&
+                    formData.has("userAttributeUpdate") &&
+                    formData.has("newUserGroup") &&
+                    formData.has("authnContextClass");
+        }
+
+
+        @Override
+        public SecurityRealm newInstance(StaplerRequest req, net.sf.json.JSONObject formData) {
+            SecurityRealm oldRealm = Jenkins.get().getSecurityRealm();
+            MoSAMLAddIdp Realm;
+            if (checkFormHasData(formData) && oldRealm instanceof MoSAMLAddIdp) {
+                LOGGER.log(Level.FINE, "form has existing data"  );
+                List<MoAttributeEntry> attributeList  = new ArrayList<MoAttributeEntry>();
+
+                try{
+                    String samlCustomAttributeString = (formData.get("samlCustomAttribute") != null ? StringUtils.defaultIfBlank(formData.get("samlCustomAttribute").toString(), "") : "");
+                    if(samlCustomAttributeString.startsWith("[")) {
+                        JSONArray jsonArray = formData.getJSONArray("samlCustomAttribute");
+                        Iterator iterator = jsonArray.iterator();
+                        while (iterator.hasNext()) {
+                            net.sf.json.JSONObject jsonObject = (net.sf.json.JSONObject) iterator.next();
+                            MoAttribute attribute = new MoAttribute(jsonObject.getString("name"), jsonObject.getString("displayName"));
+                            attributeList.add(attribute);
+                        }
+                    }
+                    else if (samlCustomAttributeString.startsWith("{")){
+                        net.sf.json.JSONObject jsonObject = formData.getJSONObject("samlCustomAttribute");
+                        MoAttribute attribute = new MoAttribute(jsonObject.getString("name"), jsonObject.getString("displayName"));
+                        attributeList.add(attribute);
+                    }
+
+                }
+                catch (Exception e) {
+                    LOGGER.fine("Error is  " + e.getMessage());
+                }
+
+
+                try {
+                    Realm = new MoSAMLAddIdp(
+                            StringUtils.defaultIfBlank(formData.get("idpEntityId").toString(), ""),
+                            StringUtils.defaultIfBlank(formData.get("ssoUrl").toString(), ""),
+                            StringUtils.defaultIfBlank(formData.get("metadataUrl").toString(), ""),
+                            StringUtils.defaultIfBlank(formData.get("metadataFilePath").toString(), ""),
+                            StringUtils.defaultIfBlank(formData.get("publicx509Certificate").toString(), ""),
+                            StringUtils.defaultIfBlank(formData.get("usernameCaseConversion").toString(), ""),
+                            StringUtils.defaultIfBlank(formData.get("usernameAttribute").toString(), ""),
+                            StringUtils.defaultIfBlank(formData.get("emailAttribute").toString(),""),
+                            StringUtils.defaultIfBlank(formData.get("fullnameAttribute").toString(), ""),
+                            StringUtils.defaultIfBlank(formData.get("nameIDFormat").toString(), ""),
+                            StringUtils.defaultIfBlank(formData.get("sslUrl").toString(), ""),
+                            StringUtils.defaultIfBlank(formData.get("loginType").toString(), ""),
+                            StringUtils.defaultIfBlank(formData.get("regexPattern").toString(), ""),
+                            Boolean.parseBoolean(formData.get("enableRegexPattern").toString()),
+                            Boolean.parseBoolean(formData.get("signedRequest").toString()),
+                            Boolean.parseBoolean(formData.get("splitnameAttribute").toString()),
+                            Boolean.parseBoolean(formData.get("userCreate").toString()),
+                            Boolean.parseBoolean(formData.get("forceAuthn").toString()),
+                            StringUtils.defaultIfBlank(formData.get("ssoBindingType").toString(), ""),
+                            StringUtils.defaultIfBlank(formData.get("sloBindingType").toString(), ""),
+                            attributeList,
+                            Boolean.parseBoolean(formData.get("userAttributeUpdate").toString()),
+                            StringUtils.defaultIfBlank(formData.get("newUserGroup").toString(), ""),
+                            StringUtils.defaultIfBlank(formData.get("authnContextClass").toString(), "")
+                    );
+                } catch (Exception e) {
+                    LOGGER.fine(" Error in loading security realm : " + e.getMessage());
+                    throw new RuntimeException(e);
+                }
+
+            } else if (oldRealm instanceof MoSAMLAddIdp) {
+                LOGGER.log(Level.FINE, " Loading old Realm ");
+                Realm = (MoSAMLAddIdp) oldRealm;
+            } else {
+                LOGGER.fine("Creating empty realm");
+                try {
+                    Realm = new MoSAMLAddIdp("","","","","","","","","","","","","",false,
+                            false,false,true, false,"","",null,false,"",""
+                    );
+                } catch (Exception e) {
+                    LOGGER.fine("Unable to create Security realm object , error is " + e.getMessage());
+                    throw new RuntimeException(e);
+                }
+            }
+            return Realm;
+        }
+
+        private static void checkAdminPerm() {
+            Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+        }
+        private static void persistChanges() throws IOException {
+            Jenkins.get().save();
+        }
+        @RequirePOST
+        @Restricted(NoExternalUse.class)
+        public void doRealmSubmit(StaplerRequest req, StaplerResponse rsp) throws ServletException, IOException {
+            LOGGER.log(Level.FINE, "Submitting the realm");
+            checkAdminPerm();
+
+            req.setCharacterEncoding("UTF-8");
+            net.sf.json.JSONObject json = req.getSubmittedForm();
+            LOGGER.log(Level.FINE, "Saving realm values : " + json.toString());
+            SecurityRealm Realm = this.newInstance(req, json);
+            Jenkins.get().setSecurityRealm(Realm);
+            persistChanges();
+        }
 
         public FormValidation doCheckIdpEntityId(@QueryParameter String idpEntityId) {
             if (StringUtils.isEmpty(idpEntityId)) {
@@ -1379,7 +1490,9 @@ public class MoSAMLAddIdp extends SecurityRealm {
 
         public FormValidation doPerformTestConfiguration(@QueryParameter String idpEntityId, @QueryParameter String ssoUrl, @QueryParameter String publicx509Certificate) {
             if(StringUtils.isEmpty(idpEntityId) || StringUtils.isEmpty(ssoUrl) || StringUtils.isEmpty(publicx509Certificate)) {
-                LOGGER.fine("Entity ID is " +  "failed");
+                LOGGER.fine("Entity ID is " + idpEntityId);
+                LOGGER.fine("ssoUrl is " + ssoUrl);
+                LOGGER.fine("publicx509Certificate is " + publicx509Certificate);
                 return FormValidation.error("Save the idp configurations first. Could not perform test config");
             }
             LOGGER.fine("Test config called..");

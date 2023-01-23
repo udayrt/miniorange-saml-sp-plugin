@@ -99,7 +99,7 @@ public class MoSAMLPluginSettings {
     public String getMetadataUrl() {return metadataUrl; }
     public String getMetadataFilePath() {return metadataFilePath; }
 
-    public String getX509PublicCertificate() {
+    public String getPublicx509Certificate() {
         return publicx509Certificate;
     }
 
