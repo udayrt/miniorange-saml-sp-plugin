@@ -116,7 +116,7 @@ public class MoSAMLPluginSettings {
     }
 
     public String getSPBaseUrl() {
-        String rootURL= Jenkins.getInstance().getRootUrl();
+        String rootURL= Jenkins.get().getRootUrl();
         if(rootURL.endsWith("/")){
             rootURL= rootURL.substring(0,rootURL.length()-1);
         }
@@ -124,7 +124,7 @@ public class MoSAMLPluginSettings {
     }
 
     public String getSPEntityID() {
-        String rootURL= Jenkins.getInstance().getRootUrl();
+        String rootURL= Jenkins.get().getRootUrl();
         if(rootURL.endsWith("/")){
             rootURL= rootURL.substring(0,rootURL.length()-1);
         }
@@ -132,7 +132,7 @@ public class MoSAMLPluginSettings {
     }
 
     public String getSPAudienceURI() {
-        String rootURL= Jenkins.getInstance().getRootUrl();
+        String rootURL= Jenkins.get().getRootUrl();
         if(rootURL.endsWith("/")){
             rootURL= rootURL.substring(0,rootURL.length()-1);
         }

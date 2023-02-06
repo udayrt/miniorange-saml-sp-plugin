@@ -29,10 +29,10 @@ public class MoIDPMetadata {
     private String metadata;
 
     private EntityDescriptor entityDescriptor;
-    public static String entityId;
+    public String entityId;
     private Map<String, String> singleSignOnServices;
     private Map<String, String> singleLogoutServices;
-    public static List<String> signingCertificates;
+    public  List<String> signingCertificates;
     public static String certificate;
     public static String nameIdFormat;
 

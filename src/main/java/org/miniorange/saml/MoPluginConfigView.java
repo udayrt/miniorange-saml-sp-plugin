@@ -15,7 +15,6 @@ import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
-import javax.annotation.CheckForNull;
 import java.util.logging.Logger;
 
 import static jenkins.model.Jenkins.get;
@@ -50,7 +49,7 @@ public class MoPluginConfigView extends ManagementLink implements Describable<Mo
     }
 
 
-    @CheckForNull
+    @NonNull
     @Override
     public String getIconFileName() {
         String icon = null;
@@ -60,14 +59,14 @@ public class MoPluginConfigView extends ManagementLink implements Describable<Mo
         return icon;
     }
 
-    @CheckForNull
+    @NonNull
     @Override
     public String getDisplayName() {
         return "miniOrange SAML SSO";
     }
 
 
-    @CheckForNull
+    @NonNull
     @Override
     public String getUrlName() {
         return "MoPluginConfigView";
@@ -99,10 +98,9 @@ public class MoPluginConfigView extends ManagementLink implements Describable<Mo
 
     @Extension
     public static final class DescriptorImpl extends Descriptor<MoPluginConfigView> {
-        public DescriptorImpl() {}
+        public DescriptorImpl() {
+        }
     }
-
-
 
 
 }

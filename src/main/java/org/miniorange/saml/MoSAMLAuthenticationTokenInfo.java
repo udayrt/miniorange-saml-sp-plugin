@@ -1,14 +1,14 @@
 package org.miniorange.saml;
 
-import org.acegisecurity.providers.AbstractAuthenticationToken;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
 
-import javax.annotation.Nonnull;
+import edu.umd.cs.findbugs.annotations.NonNull;
 
 public class MoSAMLAuthenticationTokenInfo extends AbstractAuthenticationToken{
 
     private MoSAMLUserInfo userInfo;
 
-    public MoSAMLAuthenticationTokenInfo(@Nonnull MoSAMLUserInfo userInfo) {
+    public MoSAMLAuthenticationTokenInfo(@NonNull MoSAMLUserInfo userInfo) {
         super(userInfo.getAuthorities());
         this.userInfo = userInfo;
         this.setDetails(userInfo);

@@ -350,7 +350,7 @@ public class MoSAMLManager {
                String encodedAuthnRequest = MoSAMLUtils.base64EncodeRequest(authnRequest, true);
                String form = createHttpPostRequestForm(settings.getSsoUrl(), encodedAuthnRequest, relayState);
                LOGGER.fine("form created for post is " + form);
-               response.getOutputStream().write(form.getBytes());
+               response.getOutputStream().write(form.getBytes(StandardCharsets.UTF_8));
                response.getOutputStream().close();
                return;
            } else {

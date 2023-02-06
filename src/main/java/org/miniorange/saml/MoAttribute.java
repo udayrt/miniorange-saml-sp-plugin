@@ -1,5 +1,6 @@
 package org.miniorange.saml;
 
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.model.Descriptor;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -32,6 +33,7 @@ public class MoAttribute extends MoAttributeEntry{
 
     @Extension
     public static final class DescriptorImpl extends Descriptor<MoAttributeEntry> {
+        @NonNull
         @Override
         public String getDisplayName() {
             return "SAML Attribute";

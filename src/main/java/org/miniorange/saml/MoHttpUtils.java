@@ -1,7 +1,6 @@
 package org.miniorange.saml;
 
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -19,9 +18,10 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.BasicHttpClientConnectionManager;
 import org.apache.http.impl.conn.SystemDefaultRoutePlanner;
+import org.apache.http.util.EntityUtils;
 import javax.net.ssl.SSLContext;
-import java.io.InputStreamReader;
 import java.net.ProxySelector;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -62,7 +62,7 @@ public class MoHttpUtils {
 
 			if (response.getEntity() != null) {
 				LOGGER.fine("Response Entity found. Reading Response payload.");
-				String status = IOUtils.toString(new InputStreamReader((response.getEntity().getContent())));
+				String status = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
 				LOGGER.fine("Response payload: " + status);
 				httpClient.close();
 				return status;
@@ -124,7 +124,7 @@ public class MoHttpUtils {
 
 			if (response.getEntity() != null) {
 				LOGGER.fine("Response Entity found. Reading Response payload.");
-				String status = IOUtils.toString(new InputStreamReader((response.getEntity().getContent())));
+				String status = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
 				LOGGER.fine("Response payload: " + status);
 				httpClient.close();
 				return status;

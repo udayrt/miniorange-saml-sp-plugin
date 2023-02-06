@@ -6,28 +6,37 @@
         <l:main-panel>
             <f:section title="Miniorange Saml SP plugin configuration"></f:section>
 
-            <!--            To access any function in MoPluginConfigView ... use as below described -->
-            <!--            ${it.descriptor.getfoo()} -->
-            <!--            ${it.getfoo()}
-            -->
-
             <j:set var="securityRealm" value="${it.realm}"/>
             <f:section title="SP Configuration" descriptor="${securityRealm.descriptor}">
                 <j:set var="jvar_baseUrl" value="${securityRealm.descriptor.getBaseUrl()}"/>
                 <f:entry title="SP Entity ID:" field="sPEntityID">
-                    <f:textbox default="${jvar_baseUrl}" disabled="true"/>
+                    <div style="display: flex">
+                        <f:textbox default="${jvar_baseUrl}" disabled="true"/>
+                        <l:copyButton message="text copied" text="${jvar_baseUrl}" tooltip="Click to copy"/>
+                    </div>
                 </f:entry>
 
                 <f:entry title="Audience URI:" field="audienceURI">
-                    <f:textbox default="${jvar_baseUrl}" disabled="true"/>
+                    <div style="display: flex">
+                        <f:textbox default="${jvar_baseUrl}" disabled="true"/>
+                        <l:copyButton message="text copied" text="${jvar_baseUrl}" tooltip="Click to copy"/>
+                    </div>
                 </f:entry>
 
                 <f:entry title="ACS URL:" field="acsURL">
-                    <f:textbox default="${jvar_baseUrl}/securityRealm/moSamlAuth" disabled="true"/>
+                    <div style="display: flex">
+                        <f:textbox default="${jvar_baseUrl}/securityRealm/moSamlAuth" disabled="true"/>
+                        <l:copyButton message="text copied" text="${jvar_baseUrl}/securityRealm/moSamlAuth"
+                                      tooltip="Click to copy"/>
+                    </div>
                 </f:entry>
 
                 <f:entry title="SP Logout URL: " field="spLogoutURL">
-                    <f:textbox default="${jvar_baseUrl}/securityRealm/logout" disabled="true"/>
+                    <div style="display: flex">
+                        <f:textbox default="${jvar_baseUrl}/securityRealm/logout" disabled="true"/>
+                        <l:copyButton message="text copied" text="${jvar_baseUrl}/securityRealm/logout"
+                                      tooltip="Click to copy"/>
+                    </div>
                 </f:entry>
 
                 <f:block>
@@ -123,8 +132,7 @@
                     </f:entry>
 
 
-                    <f:entry title="Username Case Conversion" field="usernameCaseConversion"
-                             help="/plugin/saml/help/usernameCaseConversion.html">
+                    <f:entry title="Username Case Conversion" field="usernameCaseConversion">
                         <select name="usernameCaseConversion">
                             <f:option value="none" selected="${securityRealm.getUsernameCaseConversion() == 'none'}">
                                 None
@@ -196,7 +204,7 @@
                         <f:checkbox checked="${securityRealm.getUserCreate()}"/>
                     </f:entry>
 
-                    <f:entry title="Force Authentication" field="forceAuthn" help="/plugin/saml/help/forceAuthn.html">
+                    <f:entry title="Force Authentication" field="forceAuthn">
                         <f:checkbox checked="${securityRealm.getForceAuthn()}"/>
                     </f:entry>
 

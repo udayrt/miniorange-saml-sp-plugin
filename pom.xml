@@ -1,35 +1,39 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
-        <version>3.31</version>
+        <version>4.51</version>
+        <relativePath/>
     </parent>
     <groupId>io.jenkins.plugins</groupId>
     <artifactId>miniorange-saml-sp</artifactId>
-    <version>2.0.1-SNAPSHOT</version>
+    <version>${revision}${changelist}</version>
     <packaging>hpi</packaging>
     <name>Jenkins SAML Single Sign On(SSO)</name>
-
+    <url>https://github.com/jenkinsci/${project.artifactId}-plugin</url>
     <scm>
-        <connection>scm:git:git://github.com/jenkinsci/miniorange-saml-sp-plugin.git</connection>
-        <developerConnection>scm:git:git@github.com:jenkinsci/miniorange-saml-sp-plugin.git</developerConnection>
-        <url>https://github.com/jenkinsci/miniorange-saml-sp-plugin</url>
-        <tag>miniorange-saml-sp-1.0.1</tag>
+        <connection>scm:git:https://github.com/${gitHubRepo}.git</connection>
+        <developerConnection>scm:git:git@github.com:${gitHubRepo}.git</developerConnection>
+        <url>https://github.com/${gitHubRepo}</url>
+        <tag>${scmTag}</tag>
     </scm>
 
     <properties>
-        <revision>1.0.0</revision>
+        <revision>2.0.1</revision>
         <changelist>-SNAPSHOT</changelist>
-        <jenkins.version>2.176.1</jenkins.version>
-        <java.level>8</java.level>
+        <jenkins.version>2.319.3</jenkins.version>
+        <gitHubRepo>jenkinsci/${project.artifactId}-plugin</gitHubRepo>
+        <spotbugs.threshold>High</spotbugs.threshold>
     </properties>
 
     <licenses>
         <license>
             <name>Apache 2.0 License</name>
-            <url>http://www.apache.org/licenses/LICENSE-2.0</url>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
         </license>
     </licenses>
 
@@ -46,46 +50,59 @@
         </pluginRepository>
     </pluginRepositories>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.jenkins.tools.bom</groupId>
+                <artifactId>bom-2.319.x</artifactId>
+                <version>1654.vcb_69d035fa_20</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.santuario</groupId>
+                <artifactId>xmlsec</artifactId>
+                <version>2.0.5</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.7</version>
-        </dependency>
-        <dependency>
-        <groupId>org.apache.santuario</groupId>
-        <artifactId>xmlsec</artifactId>
-        <version>2.0.5</version>
-    </dependency>
-
-        <!-- https://mvnrepository.com/artifact/commons-collections/commons-collections -->
-        <dependency>
-            <groupId>commons-collections</groupId>
-            <artifactId>commons-collections</artifactId>
-            <version>3.2.2</version>
+            <groupId>io.jenkins.plugins</groupId>
+            <artifactId>commons-lang3-api</artifactId>
         </dependency>
 
         <dependency>
             <groupId>org.jenkins-ci.plugins</groupId>
             <artifactId>mailer</artifactId>
-            <version>1.18</version>
-            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.jenkins-ci.plugins</groupId>
             <artifactId>bouncycastle-api</artifactId>
-            <version>2.16.1</version>
         </dependency>
         <dependency>
-  <groupId>org.jsoup</groupId>
-  <artifactId>jsoup</artifactId>
-  <version>1.10.2</version>
-</dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.15.3</version>
+        </dependency>
         <dependency>
             <groupId>net.shibboleth.utilities</groupId>
             <artifactId>java-support</artifactId>
             <version>7.2.0</version>
             <exclusions>
+                <exclusion>
+                    <groupId>com.google.code.findbugs</groupId>
+                    <artifactId>jsr305</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>commons-codec</groupId>
+                    <artifactId>commons-codec</artifactId>
+                </exclusion>
                 <exclusion>
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-api</artifactId>
@@ -93,53 +110,47 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.hamcrest</groupId>
-            <artifactId>java-hamcrest</artifactId>
-            <version>2.0.0.0</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>20140107</version>
+            <version>20220924</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.opensaml/opensaml -->
         <dependency>
             <groupId>org.opensaml</groupId>
             <artifactId>opensaml</artifactId>
             <version>2.6.4</version>
+            <exclusions>
+                <!-- Provided by core -->
+                <exclusion>
+                    <groupId>commons-codec</groupId>
+                    <artifactId>commons-codec</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>commons-collections</groupId>
+                    <artifactId>commons-collections</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>commons-lang</groupId>
+                    <artifactId>commons-lang</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
-            <groupId>javax.ws.rs</groupId>
-            <artifactId>jsr311-api</artifactId>
-            <version>1.1.1</version>
-            <scope>provided</scope>
+            <groupId>io.jenkins.plugins</groupId>
+            <artifactId>commons-httpclient3-api</artifactId>
+            <version>3.1-3</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-            <version>4.3.2</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpcore</artifactId>
-            <version>4.3.3</version>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/commons-codec/commons-codec -->
-        <dependency>
-            <groupId>commons-codec</groupId>
-            <artifactId>commons-codec</artifactId>
-            <version>1.11</version>
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>apache-httpcomponents-client-4-api</artifactId>
         </dependency>
         <dependency>
             <groupId>io.jenkins.plugins</groupId>
             <artifactId>jaxb</artifactId>
-            <version>2.3.6-1</version>
         </dependency>
         <dependency>
             <groupId>xerces</groupId>
