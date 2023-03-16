@@ -95,29 +95,19 @@ public class MoIDPMetadata {
                             break;
                         }
                         if (UsageType.UNSPECIFIED.equals(key.getUse())) {
-//                            LOGGER.debug("Certificate UsageType: " + key.getUse() + ", Certificate: " + certificate);
                             if(MoSAMLUtils.isValidPublicCertificate(certificate))
                                 signingCertificates.add(certificate);
                         }
                         if (UsageType.SIGNING.equals(key.getUse())) {
-//                            LOGGER.debug("Certificate UsageType: " + key.getUse() + ", Location: " + certificate);
                             if(MoSAMLUtils.isValidPublicCertificate(certificate))
                                 signingCertificates.add(certificate);
                         }
                     }
-                    if (StringUtils.isNotBlank(entityId) && singleSignOnServices.size() > 0 && !signingCertificates.isEmpty()) {
-                        return;
-                    }
                 }
             }
         } catch (Throwable t) {
-            return ;
-//            LOGGER.error(MoPluginException.PluginErrorCode.METADATA_PARSE.getMessage(), t);
-//            throw new MoPluginException(MoPluginException.PluginErrorCode.METADATA_PARSE, t.getMessage(), t);
+            LOGGER.debug("Exception occurs while parsing metadata xml " + t);
         }
-        // Throw exception. Not a valid metadata.
-//        throw new MoPluginException(MoPluginException.PluginErrorCode.METADATA_PARSE, MoPluginException
-//                .PluginErrorCode.METADATA_PARSE.getMessage());
     }
 
     public EntityDescriptor getEntityDescriptor() {

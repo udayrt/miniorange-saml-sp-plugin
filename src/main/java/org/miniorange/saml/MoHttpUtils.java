@@ -120,7 +120,6 @@ public class MoHttpUtils {
 			HttpResponse response = httpClient.execute(getRequest);
 			LOGGER.fine("Response for HTTP Request: " + response.toString() + " and Status Code: " + response
 					.getStatusLine().getStatusCode());
-			//return "true";
 
 			if (response.getEntity() != null) {
 				LOGGER.fine("Response Entity found. Reading Response payload.");

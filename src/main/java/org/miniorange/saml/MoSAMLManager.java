@@ -76,7 +76,7 @@ public class MoSAMLManager {
             LOGGER.fine(String.valueOf(assertion));
 
             verifyConditions(assertion, settings.getSPAudienceURI());
-
+            
             String acs = settings.getSpAcsUrl();
             verifyIssuer(samlResponse, assertion, settings.getIdpEntityId());
             verifyDestination(samlResponse, acs);
@@ -192,8 +192,7 @@ public class MoSAMLManager {
         if(audienceExpected.endsWith("/")){
             audienceExpected= audienceExpected.substring(0,audienceExpected.length()-1);
         }
-        LOGGER.fine("audienceExpected After : "+audienceExpected);
-        List<Audience> audiencesInAssertion = assertion.getConditions().getAudienceRestrictions().get(0).getAudiences();
+            LOGGER.fine("audienceExpected After : "+audienceExpected);        List<Audience> audiencesInAssertion = assertion.getConditions().getAudienceRestrictions().get(0).getAudiences();
 
         for (Audience audience : audiencesInAssertion) {
             if (StringUtils.equalsIgnoreCase(audience.getAudienceURI(), audienceExpected)) {
@@ -333,52 +332,52 @@ public class MoSAMLManager {
         errorMsg.append(found);
         return errorMsg.toString();
     }
-   public void createAuthnRequestAndRedirect(HttpServletRequest request, HttpServletResponse response, String relayState,MoSAMLPluginSettings settings) {
-       try {
-           LOGGER.fine("Creating Authentication Request and rediecting user to Idp for authentication");
-           MoSAMLUtils.doBootstrap();
-           relayState=StringUtils.substringAfter(relayState,"from=");
-           AuthnRequest authnRequest = MoSAMLUtils.buildAuthnRequest(settings.getSPEntityID(),
-                   settings.getSpAcsUrl(), settings.getSsoUrl(), settings.getNameIDFormat(), BooleanUtils.toBooleanDefaultIfNull(settings.getForceAuthn(),false),StringUtils.defaultString(settings.getAuthnContextClass(),"None"));
-           if (StringUtils.equals(settings.getSsoBindingType(), "HttpPost")) {
-               response.setContentType("text/html");
-               LOGGER.fine("HTTP-POST Binding selected for SSO");
-               if (settings.getSignedRequest()) {
-                   authnRequest = (AuthnRequest) MoSAMLUtils.signHttpPostRequest(authnRequest,
-                           settings.getPublicSPCertificate(), settings.getPrivateSPCertificate());
-               }
-               String encodedAuthnRequest = MoSAMLUtils.base64EncodeRequest(authnRequest, true);
-               String form = createHttpPostRequestForm(settings.getSsoUrl(), encodedAuthnRequest, relayState);
-               LOGGER.fine("form created for post is " + form);
-               response.getOutputStream().write(form.getBytes(StandardCharsets.UTF_8));
-               response.getOutputStream().close();
-               return;
-           } else {
-               LOGGER.fine("HTTP-Redirect Binding selected for SSO");
-               String encodedAuthnRequest = MoSAMLUtils.base64EncodeRequest(authnRequest, false);
-               LOGGER.fine("encodedAuthnRequest: "+encodedAuthnRequest);
-               String urlForSignature = createRequestQueryParamsForSignature(encodedAuthnRequest,relayState);
-               String signature = MoSAMLUtils.signHttpRedirectRequest(urlForSignature,
-                       XMLSignature.ALGO_ID_SIGNATURE_RSA_SHA256, settings.getPublicSPCertificate(),
-                       settings.getPrivateSPCertificate());
-               String redirectUrl = StringUtils.EMPTY;
-               if (settings.getSignedRequest()) {
-                   redirectUrl = createRedirectURL(settings.getSsoUrl(),encodedAuthnRequest, relayState ,
-                           XMLSignature.ALGO_ID_SIGNATURE_RSA_SHA256, signature, false);
-               } else {
-                   LOGGER.fine("sending relay state " + relayState);
-                   redirectUrl = createUnSignedRedirectURL(settings.getSsoUrl(), encodedAuthnRequest,
+    public void createAuthnRequestAndRedirect(HttpServletRequest request, HttpServletResponse response, String relayState,MoSAMLPluginSettings settings) {
+        try {
+            LOGGER.fine("Creating Authentication Request and rediecting user to Idp for authentication");
+            MoSAMLUtils.doBootstrap();
+            relayState=StringUtils.substringAfter(relayState,"from=");
+            AuthnRequest authnRequest = MoSAMLUtils.buildAuthnRequest(settings.getSPEntityID(),
+                    settings.getSpAcsUrl(), settings.getSsoUrl(), settings.getNameIDFormat(), BooleanUtils.toBooleanDefaultIfNull(settings.getForceAuthn(),false),StringUtils.defaultString(settings.getAuthnContextClass(),"None"));
+            if (StringUtils.equals(settings.getSsoBindingType(), "HttpPost")) {
+                response.setContentType("text/html");
+                LOGGER.fine("HTTP-POST Binding selected for SSO");
+                if (settings.getSignedRequest()) {
+                    authnRequest = (AuthnRequest) MoSAMLUtils.signHttpPostRequest(authnRequest,
+                            settings.getPublicSPCertificate(), settings.getPrivateSPCertificate());
+                }
+                String encodedAuthnRequest = MoSAMLUtils.base64EncodeRequest(authnRequest, true);
+                String form = createHttpPostRequestForm(settings.getSsoUrl(), encodedAuthnRequest, relayState);
+                LOGGER.fine("form created for post is " + form);
+                response.getOutputStream().write(form.getBytes(StandardCharsets.UTF_8));
+                response.getOutputStream().close();
+                return;
+            } else {
+                LOGGER.fine("HTTP-Redirect Binding selected for SSO");
+                String encodedAuthnRequest = MoSAMLUtils.base64EncodeRequest(authnRequest, false);
+                LOGGER.fine("encodedAuthnRequest: "+encodedAuthnRequest);
+                String urlForSignature = createRequestQueryParamsForSignature(encodedAuthnRequest,relayState);
+                String signature = MoSAMLUtils.signHttpRedirectRequest(urlForSignature,
+                        XMLSignature.ALGO_ID_SIGNATURE_RSA_SHA256, settings.getPublicSPCertificate(),
+                        settings.getPrivateSPCertificate());
+                String redirectUrl = StringUtils.EMPTY;
+                if (settings.getSignedRequest()) {
+                    redirectUrl = createRedirectURL(settings.getSsoUrl(),encodedAuthnRequest, relayState ,
+                            XMLSignature.ALGO_ID_SIGNATURE_RSA_SHA256, signature, false);
+                } else {
+                    LOGGER.fine("sending relay state " + relayState);
+                    redirectUrl = createUnSignedRedirectURL(settings.getSsoUrl(), encodedAuthnRequest,
                             relayState,false);
 
-               }
-               httpRedirect(response, redirectUrl);
-               // response.sendRedirect(redirectUrl);
-           }
-       } catch (Throwable t) {
-           LOGGER.fine("An unknown error occurred while creating the AuthnRequest."+ t);
-           throw new MoSAMLException(MoSAMLException.SAMLErrorCode.UNKNOWN);
-       }
-   }
+                }
+                httpRedirect(response, redirectUrl);
+                // response.sendRedirect(redirectUrl);
+            }
+        } catch (Throwable t) {
+            LOGGER.fine("An unknown error occurred while creating the AuthnRequest."+ t);
+            throw new MoSAMLException(MoSAMLException.SAMLErrorCode.UNKNOWN);
+        }
+    }
     private String createHttpPostRequestForm(String ssoUrl, String encodedRequest, String relayState) {
         String form =   "<html>\n" +
                         "<head>\n" +
@@ -441,7 +440,6 @@ public class MoSAMLManager {
             throws UnsupportedEncodingException {
         LOGGER.fine("Creating request query parameter for signature");
         StringBuffer urlForSignature = new StringBuffer();
-        //LOGGER.fine("encoded Authentication request: "+httpRedirectRequest);
         urlForSignature.append(MoSAMLUtils.SAML_REQUEST_PARAM).append("=")
                 .append(URLEncoder.encode(httpRedirectRequest, StandardCharsets.UTF_8.toString()));
         urlForSignature.append("&").append(MoSAMLUtils.RELAY_STATE_PARAM).append("=");

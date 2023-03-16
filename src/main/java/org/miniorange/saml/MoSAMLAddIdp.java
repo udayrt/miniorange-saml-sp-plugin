@@ -72,6 +72,7 @@ import java.security.KeyManagementException;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.conn.ssl.SSLContextBuilder;
 import javax.net.ssl.SSLContext;
+
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.config.RegistryBuilder;
 import org.apache.http.conn.socket.PlainConnectionSocketFactory;
@@ -338,7 +339,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         recreateSession(request);
         String redirectOnFinish = StringUtils.EMPTY;
         if(StringUtils.isEmpty(request.getQueryString())){
-             redirectOnFinish = calculateSafeRedirect(referer);
+            redirectOnFinish = calculateSafeRedirect(referer);
         }
         else{
             redirectOnFinish = request.getQueryString();
@@ -346,11 +347,9 @@ public class MoSAMLAddIdp extends SecurityRealm {
 
         LOGGER.fine("relay state " + redirectOnFinish);
         request.getSession().setAttribute(REFERER_ATTRIBUTE, redirectOnFinish);
-
         LOGGER.fine("in doMoSamlLogin");
         MoSAMLManager moSAMLManager = new MoSAMLManager(getMoSAMLPluginSettings());
-        moSAMLManager.createAuthnRequestAndRedirect(request, response, redirectOnFinish,getMoSAMLPluginSettings());
-    }
+        moSAMLManager.createAuthnRequestAndRedirect(request, response, redirectOnFinish,getMoSAMLPluginSettings());    }
 
     private String getBaseUrl() {
         return get().getRootUrl();
@@ -868,11 +867,6 @@ public class MoSAMLAddIdp extends SecurityRealm {
                 String value = Arrays.toString(responseSAMLAttributes.get(name));
                 System.out.println(key + " " + value);
             }
-           /* for (String name: getSamlCustomAttributes.keySet()){
-                String key = name.toString();
-                String value = responseSAMLAttributes.get(name).toString();
-                System.out.println(key + " " + value);
-            }*/
 
             for (MoAttributeEntry attributeEntry : getSamlCustomAttributes()) {
                 LOGGER.fine("attributeEntry"+attributeEntry);
@@ -882,7 +876,6 @@ public class MoSAMLAddIdp extends SecurityRealm {
                     MoSAMLuserProperty.Attribute item = new MoSAMLuserProperty.Attribute(attr.getName(), attr.getDisplayName());
                     LOGGER.fine(attr.getName()+ attr.getDisplayName()+"sssS");
                     if (responseSAMLAttributes.containsKey(attr.getName())) {
-                        // LOGGER.fine("in there");
                         String AttributeVal = responseSAMLAttributes.get(attr.getName())[0];
                         LOGGER.fine("AttributeVal"+AttributeVal);
                         item.setValue(AttributeVal);
@@ -896,7 +889,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
             try {
                 user.addProperty(userProperty);
             } catch (IOException e) {
-                LOGGER.fine("Error Occured while updating attributes" + e);
+                LOGGER.fine("Error Occurred while updating attributes" + e);
             }
         }
     }
@@ -1278,7 +1271,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
             return Realm;
         }
 
-        private static void checkAdminPerm() {
+        private static void checkAdminPermission() {
             Jenkins.get().checkPermission(Jenkins.ADMINISTER);
         }
         private static void persistChanges() throws IOException {
@@ -1288,7 +1281,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         @Restricted(NoExternalUse.class)
         public void doRealmSubmit(StaplerRequest req, StaplerResponse rsp) throws ServletException, IOException, ServletException {
             LOGGER.log(Level.FINE, "Submitting the realm");
-            checkAdminPerm();
+            checkAdminPermission();
 
             req.setCharacterEncoding("UTF-8");
             net.sf.json.JSONObject json = req.getSubmittedForm();
@@ -1348,9 +1341,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
             return FormValidation.error("Certificate validation failed.");
         }
 
-
         public FormValidation doCheckRegexPattern(@QueryParameter Boolean enableRegexPattern, @QueryParameter String regexPattern) {
-
             if (enableRegexPattern && StringUtils.isEmpty(regexPattern)) {
                 return FormValidation.error("The Regex Pattern is not Valid");
             } else {
@@ -1359,7 +1350,6 @@ public class MoSAMLAddIdp extends SecurityRealm {
         }
 
         public FormValidation doUserCreate(@QueryParameter Boolean userCreate, @QueryParameter String emailAttribute, @QueryParameter String usernameAttribute) {
-
             if (userCreate && StringUtils.isEmpty(emailAttribute) && StringUtils.isEmpty(usernameAttribute)) {
                 return FormValidation.error("Email and Username Attributes are required.");
             } else {
@@ -1389,38 +1379,13 @@ public class MoSAMLAddIdp extends SecurityRealm {
         }
 
         public FormValidation doCheckSplitnameAttribute(@QueryParameter Boolean splitnameAttribute) {
-                return FormValidation.warning("Available in premium version");
+            return FormValidation.warning("Available in premium version");
         }
         public FormValidation doCheckDisableDefaultLogin(@QueryParameter Boolean disableDefaultLogin) {
             if (! disableDefaultLogin) {
                 return FormValidation.warning("Available in premium version");
             }
             return FormValidation.ok();
-        }
-
-
-        public FormValidation doSupportEmail(@QueryParameter("supportEmail") final String supportEmail) {
-
-            if (!isValidEmailAddress(supportEmail)) {
-                LOGGER.fine("Invalid Support Email");
-                return FormValidation.error("Please enter valid mail Address.");
-            } else if(StringUtils.isEmpty(supportEmail)) {
-                return FormValidation.error("Please enter mail Address.");
-            }else {
-                return FormValidation.ok();
-            }
-        }
-        public static boolean isValidEmailAddress(String email)
-        {
-            String emailRegex = "^[a-zA-Z0-9_+&*-]+(?:\\."+
-                    "[a-zA-Z0-9_+&*-]+)*@" +
-                    "(?:[a-zA-Z0-9-]+\\.)+[a-z" +
-                    "A-Z]{2,7}$";
-
-            Pattern pat = Pattern.compile(emailRegex);
-            if (email == null)
-                return false;
-            return pat.matcher(email).matches();
         }
 
         public FormValidation doPerformTestConfiguration(@QueryParameter String idpEntityId, @QueryParameter String ssoUrl, @QueryParameter String publicx509Certificate) {

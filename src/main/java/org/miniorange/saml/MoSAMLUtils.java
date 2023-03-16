@@ -90,9 +90,7 @@ public class MoSAMLUtils {
         if(StringUtils.isBlank(text)){
             return text;
         }
-       // LOGGER.fine("Text before sanitization: "+text);
         text = Jsoup.parse(text).text();
-       // LOGGER.fine("Text after sanitization: "+text);
         return text;
     }
 
@@ -166,7 +164,6 @@ public class MoSAMLUtils {
     public static Assertion decryptAssertion(EncryptedAssertion encryptedAssertion, String publicKey, String privateKey)
             throws CertificateException, InvalidKeySpecException, NoSuchAlgorithmException, DecryptionException {
         LOGGER.fine("Decrypting Assertion.");
-        //LOGGER.fine(publicKey+"\n"+privateKey);
         StaticKeyInfoCredentialResolver keyInfoCredentialResolver = new StaticKeyInfoCredentialResolver(
                 getCredential(publicKey, privateKey));
         Decrypter decrypter = new Decrypter(null, keyInfoCredentialResolver, new InlineEncryptedKeyResolver());
@@ -216,7 +213,6 @@ public class MoSAMLUtils {
             x509Credential.setPrivateKey(privateKey);
         }
         Credential credential = x509Credential;
-        //LOGGER.fine("credential = " + credential);
         return credential;
     }
     public static String serializePublicCertificate(String certificate) {
