@@ -16,10 +16,8 @@ import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
+import java.nio.charset.Charset;
 import java.util.logging.Logger;
 
 import static jenkins.model.Jenkins.get;
@@ -91,8 +89,10 @@ public class MoPluginConfigView extends ManagementLink implements Describable<Mo
         SecurityRealm realm =  get().getSecurityRealm();
         String content = realm.toString();
         File MoSamlConfiguration = new File("MoSamlConfiguration.json");
-        try(FileWriter writer = new FileWriter(MoSamlConfiguration) ){
-            writer.write(content);
+        try(OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(MoSamlConfiguration), Charset.forName("UTF-8")) ){
+            PrintWriter printWriter= new PrintWriter(writer);
+            printWriter.println(content);
+            printWriter.close();
         } catch (IOException e) {
             e.printStackTrace();
         }

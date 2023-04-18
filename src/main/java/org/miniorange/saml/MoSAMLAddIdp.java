@@ -381,10 +381,9 @@ public class MoSAMLAddIdp extends SecurityRealm {
     }
 
     private String createNonce() {
-        SecureRandom random = new SecureRandom();
-        byte[] nonce = new byte[16];
-        random.nextBytes(nonce);
-        return Base64.getEncoder().encodeToString(nonce);
+        UUID uuid = UUID.randomUUID();
+        String uuidAsString = uuid.toString();
+        return uuidAsString;
     }
 
     public void doMoSamlLogin(final StaplerRequest request, final StaplerResponse response, @Header("Referer") final String referer) {
