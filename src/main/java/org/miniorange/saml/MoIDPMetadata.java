@@ -37,11 +37,18 @@ public class MoIDPMetadata {
     public static String nameIdFormat;
 
     public MoIDPMetadata(String metadata) {
+        String FEATURE = null;
         try {
             if (StringUtils.isNotBlank(metadata) && metadata.trim().startsWith("<") && metadata.trim().endsWith(">")) {
                 this.metadata = StringUtils.trimToEmpty(metadata);
                 MoSAMLUtils.doBootstrap();
                 DOMParser parser = new DOMParser();
+                FEATURE  = "http://xml.org/sax/features/external-general-entities";
+                parser.setFeature(FEATURE, false);
+                FEATURE = "http://xml.org/sax/features/external-parameter-entities";
+                parser.setFeature(FEATURE, false);
+                FEATURE = "http://apache.org/xml/features/disallow-doctype-decl";
+                parser.setFeature(FEATURE, false);
                 parser.parse(new InputSource(new StringReader(this.metadata)));
                 Document document = parser.getDocument();
                 Element element = document.getDocumentElement();

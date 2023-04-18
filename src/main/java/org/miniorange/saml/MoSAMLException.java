@@ -49,6 +49,8 @@ public class MoSAMLException extends RuntimeException {
 
     public enum SAMLErrorCode {
 
+        NOT_IN_TIMESTAMP("Request has timed out or expired", "Please retry again"),
+
         INVALID_ISSUER("Invalid Issuer in the SAML Response.", "Please verify IDP Entity ID value is correct."),
 
         INVALID_SIGNATURE(

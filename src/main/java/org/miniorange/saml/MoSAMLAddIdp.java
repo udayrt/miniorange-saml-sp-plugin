@@ -14,6 +14,7 @@ import hudson.security.SecurityRealm;
 import hudson.util.FormValidation;
 import jenkins.model.Jenkins;
 import jenkins.security.SecurityListener;
+import org.kohsuke.stapler.verb.POST;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
@@ -38,6 +39,7 @@ import java.net.URL;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -63,6 +65,7 @@ import org.opensaml.xml.util.XMLHelper;
 import org.w3c.dom.Element;
 
 import static jenkins.model.Jenkins.get;
+import static org.miniorange.saml.MoHttpUtils.sendGetRequest;
 
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -72,6 +75,12 @@ import java.security.KeyManagementException;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.conn.ssl.SSLContextBuilder;
 import javax.net.ssl.SSLContext;
+import javax.xml.XMLConstants;
+import javax.xml.transform.Source;
+import javax.xml.transform.stream.StreamSource;
+import javax.xml.validation.Schema;
+import javax.xml.validation.SchemaFactory;
+import javax.xml.validation.Validator;
 
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.config.RegistryBuilder;
@@ -131,6 +140,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
     private List<MoAttributeEntry> samlCustomAttributes;
     private String newUserGroup;
     private String authnContextClass;
+    private static Set<String> nonceSet = new HashSet<>();
 
 
     @DataBoundConstructor
@@ -163,9 +173,9 @@ public class MoSAMLAddIdp extends SecurityRealm {
         this.metadataUrl = metadataUrl;
         this.metadataFilePath = metadataFilePath;
         if (!StringUtils.isEmpty(metadataUrl) || !StringUtils.isEmpty(metadataFilePath) ) {
-            String metadata = (!StringUtils.isEmpty(metadataUrl) ? sendGetRequest(metadataUrl) : getMetadataFromFile(metadataFilePath));
+            String metadata = (!StringUtils.isEmpty(metadataUrl) ? sendGetRequest(metadataUrl, null) : getMetadataFromFile(metadataFilePath));
             List<String> metadataUrlValues = configureFromMetadata(metadata);
-            if (metadataUrlValues != null) {
+            if (metadataUrlValues.size() != 0) {
 
                 this.idpEntityId = metadataUrlValues.get(0);
                 this.nameIDFormat = metadataUrlValues.get(1);
@@ -207,6 +217,41 @@ public class MoSAMLAddIdp extends SecurityRealm {
         this.fullnameAttribute = fullnameAttribute;
         this.newUserGroup= newUserGroup;
         this.authnContextClass=(authnContextClass != null) ? authnContextClass : "None";
+    }
+
+    @Override
+    public String toString() {
+        return "{" +
+                "\"spEntityId:\": \"" + getBaseUrl() + '\"' +
+                ", \"audienceURI:\": \"" + getBaseUrl() + '\"' +
+                ", \"acsURL:\": \"" + getBaseUrl() + "securityRealm/moSamlAuth" + '\"' +
+                ", \"spLogoutURL:\": \"" + getBaseUrl() + "securityRealm/logout" + '\"' +
+                ", \"idpEntityId\": \"" + idpEntityId + '\"' +
+                ", \"ssoUrl\": \"" + ssoUrl + '\"' +
+                ", \"metadataUrl\": \"" + metadataUrl + '\"' +
+                ", \"metadataFilePath\": \"" + metadataFilePath + '\"' +
+                ", \"publicx509Certificate\": \"" + publicx509Certificate + '\"' +
+                ", \"usernameAttribute\": \"" + usernameAttribute + '\"' +
+                ", \"fullnameAttribute\": \"" + fullnameAttribute + '\"' +
+                ", \"usernameCaseConversion\": \"" + usernameCaseConversion + '\"' +
+                ", \"userAttributeUpdate\": \"" + userAttributeUpdate + '\"' +
+                ", \"emailAttribute\": \"" + emailAttribute + '\"' +
+                ", \"nameIDFormat\": \"" + nameIDFormat + '\"' +
+                ", \"sslUrl\": \"" + sslUrl + '\"' +
+                ", \"loginType\": \"" + loginType + '\"' +
+                ", \"regexPattern\": \"" + regexPattern + '\"' +
+                ", \"enableRegexPattern\": \"" + enableRegexPattern + '\"' +
+                ", \"signedRequest\": \"" + signedRequest + '\"' +
+                ", \"splitnameAttribute\": \"" + splitnameAttribute + '\"' +
+                ", \"userCreate\": \"" + userCreate + '\"' +
+                ", \"forceAuthn\": \"" + forceAuthn + '\"' +
+                ", \"ssoBindingType\": \"" + ssoBindingType + '\"' +
+                ", \"sloBindingType\": \"" + sloBindingType + '\"' +
+                ", \"samlCustomAttributes\": \"" + samlCustomAttributes + '\"' +
+                ", \"newUserGroup\": \"" + newUserGroup + '\"' +
+                ", \"authnContextClass\": \"" + authnContextClass + '\"' +
+                ", \"disableDefaultLogin\": \"" + "false" + '\"' +
+                '}';
     }
 
     @Override
@@ -304,7 +349,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         }
     }
 
-    private String calculateSafeRedirect( String referer) {
+    private String calculateSafeRedirect(String referer) {
         String redirectURL;
         String rootUrl = getBaseUrl();
         {
@@ -335,23 +380,26 @@ public class MoSAMLAddIdp extends SecurityRealm {
         return html;
     }
 
+    private String createNonce() {
+        SecureRandom random = new SecureRandom();
+        byte[] nonce = new byte[16];
+        random.nextBytes(nonce);
+        return Base64.getEncoder().encodeToString(nonce);
+    }
+
     public void doMoSamlLogin(final StaplerRequest request, final StaplerResponse response, @Header("Referer") final String referer) {
         recreateSession(request);
-        String redirectOnFinish = StringUtils.EMPTY;
-        if(StringUtils.isEmpty(request.getQueryString())){
-            redirectOnFinish = calculateSafeRedirect(referer);
-        }
-        else{
-            redirectOnFinish = request.getQueryString();
-        }
-
-        LOGGER.fine("relay state " + redirectOnFinish);
-        request.getSession().setAttribute(REFERER_ATTRIBUTE, redirectOnFinish);
+        String base64Nonce = createNonce();
+        nonceSet.add(base64Nonce);
+        HttpSession session = request.getSession();
+        String relayState = StringUtils.substringAfter(calculateSafeRedirect(referer), "from=");
+        session.setAttribute(MoSAMLUtils.RELAY_STATE_PARAM, relayState);
         LOGGER.fine("in doMoSamlLogin");
         MoSAMLManager moSAMLManager = new MoSAMLManager(getMoSAMLPluginSettings());
-        moSAMLManager.createAuthnRequestAndRedirect(request, response, redirectOnFinish,getMoSAMLPluginSettings());    }
+        moSAMLManager.createAuthnRequestAndRedirect(request, response, base64Nonce, getMoSAMLPluginSettings());
+    }
 
-    private String getBaseUrl() {
+    public String getBaseUrl() {
         return get().getRootUrl();
     }
 
@@ -585,30 +633,6 @@ public class MoSAMLAddIdp extends SecurityRealm {
         return null;
     }
 
-    private static CloseableHttpClient getHttpClient() throws KeyStoreException, NoSuchAlgorithmException,
-            KeyManagementException {
-        HttpClientBuilder builder = HttpClientBuilder.create();
-        SSLContext sslContext = new SSLContextBuilder().loadTrustMaterial(null, (arg0, arg1) -> true).build();
-        SSLConnectionSocketFactory sslConnectionFactory = new SSLConnectionSocketFactory(sslContext,
-                SSLConnectionSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
-        builder.setSSLSocketFactory(sslConnectionFactory);
-
-        Registry<ConnectionSocketFactory> registry = RegistryBuilder.<ConnectionSocketFactory>create()
-                .register("https", sslConnectionFactory)
-                .register("http", PlainConnectionSocketFactory.INSTANCE)
-                .build();
-
-        HttpClientConnectionManager ccm = new BasicHttpClientConnectionManager(registry);
-
-        builder.setConnectionManager(ccm);
-
-        //return builder.build();
-        SystemDefaultRoutePlanner routePlanner = new SystemDefaultRoutePlanner(ProxySelector.getDefault());
-        CloseableHttpClient httpclient = HttpClients.custom().setRoutePlanner(routePlanner).setConnectionManager(ccm)
-                .build();
-        return httpclient;
-    }
-
     public static String getMetadataFromFile(String path) {
         String data = StringUtils.EMPTY;
         File file = new File(path.trim());
@@ -620,34 +644,6 @@ public class MoSAMLAddIdp extends SecurityRealm {
         }
         LOGGER.fine("data from file is " + data);
         return data;
-    }
-
-    public static String sendGetRequest(String url) {
-        String errorMsg = new String("Did not get metadata");
-        try {
-            LOGGER.info("MoHttpUtils sendGetRequest Sending GET request to " + url);
-            CloseableHttpClient httpClient = getHttpClient();
-            HttpGet getRequest = new HttpGet(url);
-            org.apache.http.HttpResponse response = httpClient.execute(getRequest);
-            LOGGER.info("Response for HTTP Request: " + response.toString() + " and Status Code: " + response
-                    .getStatusLine().getStatusCode());
-
-            if (response.getStatusLine().getStatusCode() == 200 && response.getEntity() != null) {
-                LOGGER.info("Response Entity found. Reading Response payload.");
-                String data = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
-                LOGGER.info("Response payload: " + data);
-                httpClient.close();
-                return data;
-            } else {
-
-                LOGGER.info("Response Entity NOT found. ");
-                httpClient.close();
-                return errorMsg;
-            }
-        } catch (Exception e) {
-            LOGGER.info("error occur "+e);
-            return errorMsg;
-        }
     }
 
     public static List<String> configureFromMetadata(String metadata) throws Exception {
@@ -700,16 +696,26 @@ public class MoSAMLAddIdp extends SecurityRealm {
     }
     @RequirePOST
     public HttpResponse doMoSamlAuth(final StaplerRequest request, final StaplerResponse response) throws IOException {
-        String referer = (String) request.getSession().getAttribute(REFERER_ATTRIBUTE);
         String redirectUrl = StringUtils.EMPTY;
-        String relayState = calculateSafeRedirect(request.getParameter(MoSAMLUtils.RELAY_STATE_PARAM));
+        String nonce = request.getParameter(MoSAMLUtils.RELAY_STATE_PARAM);
+
+        // Remove the nonce value from the HashSet to prevent replay attacks
+        if (nonceSet.contains(nonce)) {
+            nonceSet.remove(nonce);
+        } else {
+            LOGGER.fine("Error in Nonce value, Repeated SAML response: ");
+            throw new MoSAMLException("Invalid Response", MoSAMLException.SAMLErrorCode.RESPONDER);
+        }
+
+        String relayState = (String) request.getSession().getAttribute(MoSAMLUtils.RELAY_STATE_PARAM);
+
         if(!StringUtils.isEmpty(relayState)){
             redirectUrl= URLDecoder.decode(relayState, "UTF-8");
         }
-        LOGGER.fine("Relay state is "+ redirectUrl);
         if(StringUtils.isEmpty(redirectUrl)){
             redirectUrl = getBaseUrl();
         }
+        LOGGER.fine("Relay state is "+ redirectUrl);
         recreateSession(request);
         LOGGER.fine(" Reading SAML Response");
         String username = "";
@@ -1291,14 +1297,18 @@ public class MoSAMLAddIdp extends SecurityRealm {
             persistChanges();
         }
 
+        @POST
         public FormValidation doCheckIdpEntityId(@QueryParameter String idpEntityId) {
+            checkAdminPermission();
             if (StringUtils.isEmpty(idpEntityId)) {
                 return FormValidation.error("The Entity ID Can not be kept blank.");
             }
             return FormValidation.ok();
         }
 
+        @POST
         public FormValidation doCheckSsoUrl(@QueryParameter String ssoUrl) {
+            checkAdminPermission();
             if (StringUtils.isEmpty(ssoUrl)) {
                 return FormValidation.error("The Single Sign On URL Can not be kept blank.");
             }
@@ -1310,21 +1320,27 @@ public class MoSAMLAddIdp extends SecurityRealm {
             return FormValidation.ok();
         }
 
+        @POST
         public FormValidation doCheckUsernameAttribute(@QueryParameter String usernameAttribute, @QueryParameter String loginType) {
+            checkAdminPermission();
             if (StringUtils.isEmpty(usernameAttribute) && loginType.equals("usernameLogin")) {
                 return FormValidation.warning("Username Can not kept blank");
             }
             return FormValidation.ok();
         }
 
+        @POST
         public FormValidation doCheckEmailAttribute(@QueryParameter String emailAttribute, @QueryParameter String loginType) {
+            checkAdminPermission();
             if (StringUtils.isEmpty(emailAttribute) && loginType.equals("emailLogin")) {
                 return FormValidation.warning("Email Address Can not kept blank");
             }
             return FormValidation.ok();
         }
 
+        @POST
         public FormValidation doCheckPublicx509Certificate(@QueryParameter String publicx509Certificate) {
+            checkAdminPermission();
             if (StringUtils.isEmpty(publicx509Certificate)) {
                 return FormValidation.error("Certificate cannot be kept blank.");
             }
@@ -1341,7 +1357,10 @@ public class MoSAMLAddIdp extends SecurityRealm {
             return FormValidation.error("Certificate validation failed.");
         }
 
+
+        @POST
         public FormValidation doCheckRegexPattern(@QueryParameter Boolean enableRegexPattern, @QueryParameter String regexPattern) {
+            checkAdminPermission();
             if (enableRegexPattern && StringUtils.isEmpty(regexPattern)) {
                 return FormValidation.error("The Regex Pattern is not Valid");
             } else {
@@ -1349,7 +1368,9 @@ public class MoSAMLAddIdp extends SecurityRealm {
             }
         }
 
+        @POST
         public FormValidation doUserCreate(@QueryParameter Boolean userCreate, @QueryParameter String emailAttribute, @QueryParameter String usernameAttribute) {
+            checkAdminPermission();
             if (userCreate && StringUtils.isEmpty(emailAttribute) && StringUtils.isEmpty(usernameAttribute)) {
                 return FormValidation.error("Email and Username Attributes are required.");
             } else {
@@ -1365,30 +1386,40 @@ public class MoSAMLAddIdp extends SecurityRealm {
             return rootURL;
         }
 
+        @POST
         public FormValidation doCheckUserAttributeUpdate(@QueryParameter Boolean userAttributeUpdate) {
+            checkAdminPermission();
             if (! userAttributeUpdate) {
                 return FormValidation.warning("Available in premium version");
             }
             return FormValidation.ok();
         }
+        @POST
         public FormValidation doCheckSignedRequest(@QueryParameter Boolean signedRequest) {
+            checkAdminPermission();
             if (! signedRequest) {
                 return FormValidation.warning("Available in premium version");
             }
             return FormValidation.ok();
         }
 
+        @POST
         public FormValidation doCheckSplitnameAttribute(@QueryParameter Boolean splitnameAttribute) {
+            checkAdminPermission();
             return FormValidation.warning("Available in premium version");
         }
+        @POST
         public FormValidation doCheckDisableDefaultLogin(@QueryParameter Boolean disableDefaultLogin) {
+            checkAdminPermission();
             if (! disableDefaultLogin) {
                 return FormValidation.warning("Available in premium version");
             }
             return FormValidation.ok();
         }
 
+        @POST
         public FormValidation doPerformTestConfiguration(@QueryParameter String idpEntityId, @QueryParameter String ssoUrl, @QueryParameter String publicx509Certificate) {
+            checkAdminPermission();
             if(StringUtils.isEmpty(idpEntityId) || StringUtils.isEmpty(ssoUrl) || StringUtils.isEmpty(publicx509Certificate)) {
                 LOGGER.fine("Entity ID is " + idpEntityId);
                 LOGGER.fine("ssoUrl is " + ssoUrl);
@@ -1400,8 +1431,10 @@ public class MoSAMLAddIdp extends SecurityRealm {
             return FormValidation.okWithMarkup("Click " + "<a href='"+ testConfigUrl+ "' target='_blank' >here</a>"+ " to see the test configurations result.");
         }
 
+        @POST
         public FormValidation doValidateMetadataUrl(@QueryParameter String metadataUrl) throws Exception {
-            String metadata = sendGetRequest(metadataUrl);
+            checkAdminPermission();
+            String metadata = sendGetRequest(metadataUrl, null);
             try{
                 List<String> metadataUrlValues = configureFromMetadata(metadata);
             }catch (Exception e){
@@ -1410,7 +1443,9 @@ public class MoSAMLAddIdp extends SecurityRealm {
             }
             return FormValidation.okWithMarkup("Valid metadata Url, please hit save button");
         }
+        @POST
         public FormValidation doValidateMetadataFile(@QueryParameter String metadataFilePath) throws Exception {
+            checkAdminPermission();
             String metadata = getMetadataFromFile(metadataFilePath);
             try{
                 List<String> metadataUrlValues = configureFromMetadata(metadata);

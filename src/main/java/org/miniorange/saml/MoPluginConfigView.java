@@ -9,12 +9,17 @@ import hudson.model.ManagementLink;
 import hudson.security.SecurityRealm;
 import hudson.util.FormApply;
 import jenkins.model.Jenkins;
+import org.apache.commons.io.IOUtils;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.logging.Logger;
 
 import static jenkins.model.Jenkins.get;
@@ -77,6 +82,27 @@ public class MoPluginConfigView extends ManagementLink implements Describable<Mo
         return "Secure Single Sign-On (SSO) solution that allows user to login to their apps using   IDP credentials by SAML Authentication.";
     }
 
+    public void doDownload(StaplerRequest req, StaplerResponse rsp) throws IOException {
+
+        rsp.setContentType("text/plain");
+        rsp.setContentType("application/octet-stream");
+        rsp.setHeader("Content-Disposition", "attachment; filename=MoSamlConfiguration.json");
+
+        SecurityRealm realm =  get().getSecurityRealm();
+        String content = realm.toString();
+        File MoSamlConfiguration = new File("MoSamlConfiguration.json");
+        try(FileWriter writer = new FileWriter(MoSamlConfiguration) ){
+            writer.write(content);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        FileInputStream in = new FileInputStream(MoSamlConfiguration);
+        IOUtils.copy(in, rsp.getOutputStream());
+        in.close();
+        rsp.getOutputStream().close();
+    }
+
     public String getBaseUrl() {
         String rootURL = get().getRootUrl();
         if (rootURL.endsWith("/")) {
@@ -88,7 +114,7 @@ public class MoPluginConfigView extends ManagementLink implements Describable<Mo
     @SuppressWarnings("unchecked")
     @Override
     public Descriptor<MoPluginConfigView> getDescriptor() {
-        Jenkins jenkins = Jenkins.getInstance();
+        Jenkins jenkins = Jenkins.get();
 
         if (jenkins == null) {
             throw new IllegalStateException("Jenkins has not been started");

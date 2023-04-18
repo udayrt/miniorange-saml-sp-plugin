@@ -2,7 +2,14 @@
 <j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form" xmlns:i="jelly:fmt" xmlns:st="jelly:stapler" xmlns:l="/lib/layout">
 
     <l:layout permission="${app.SYSTEM_READ}" title="${%miniOrange Saml SSO}" norefresh="true">
-        <st:include it="${app}" page="sidepanel.jelly"/>
+
+        <l:side-panel>
+            <l:tasks>
+                <l:task title="back" href="../" icon="symbol-arrow-up"/>
+                <l:task contextMenu="false" href="../../asynchPeople/" icon="symbol-people" title="${%People}"/>
+                <l:task contextMenu="false" href="./download" icon="symbol-download" title="${%Download SAML Configuration}"/>
+            </l:tasks>
+        </l:side-panel>
         <l:main-panel>
             <style>
 
