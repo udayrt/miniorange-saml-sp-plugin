@@ -14,13 +14,13 @@ public class MoSAMLResponse
     private String nameId;
     private String sessionIndex;
     private String relayStateURL;
+    private String inResponseTo;
 
-    public MoSAMLResponse(Map<String, String[]> attributes, String nameId, String sessionIndex)
-    {
+    public MoSAMLResponse(Map<String, String[]> attributes, String nameId, String sessionIndex, String inResponseTo)    {
         this.attributes = attributes;
         this.nameId = nameId;
         this.sessionIndex = sessionIndex;
-
+        this.inResponseTo = inResponseTo;
     }
 
     public Map<String, String[]> getAttributes()
@@ -53,6 +53,15 @@ public class MoSAMLResponse
     {
         this.sessionIndex = sessionIndex;
     }
+
+    public String getInResponseTo() {
+        return inResponseTo;
+    }
+
+    public void setInResponseTo(String inResponseTo) {
+        this.inResponseTo = inResponseTo;
+    }
+
 
     public String toString()
     {

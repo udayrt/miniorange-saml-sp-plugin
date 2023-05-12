@@ -72,6 +72,19 @@ public class MoSAMLManager {
                 assertion = MoSAMLUtils.decryptAssertion(samlResponse.getEncryptedAssertions().get(0),
                         settings.getPublicSPCertificate(), settings.getPrivateSPCertificate());
             }
+
+
+            String inResponseTo = null;
+            List<SubjectConfirmation> confirmations = assertion.getSubject().getSubjectConfirmations();
+            if (confirmations != null && !confirmations.isEmpty()) {
+                for (SubjectConfirmation confirmation : confirmations) {
+                    SubjectConfirmationData data = confirmation.getSubjectConfirmationData();
+                    if (data != null) {
+                        inResponseTo = data.getInResponseTo();
+                    }
+                }
+            }
+
             LOGGER.fine(String.valueOf(assertion));
             verifyConditions(assertion, settings.getSPAudienceURI());
             String acs = settings.getSpAcsUrl();
@@ -99,7 +112,7 @@ public class MoSAMLManager {
                 nameIdValue = nameId.getValue();
             }
             attributes.put("NameID", new String[] { nameIdValue });
-            MoSAMLResponse samlResponseObj = new MoSAMLResponse(attributes, nameIdValue, sessionIndex);
+            MoSAMLResponse samlResponseObj = new MoSAMLResponse(attributes, nameIdValue, sessionIndex, inResponseTo);
             return samlResponseObj;
         } catch (MoSAMLException e) {
             LOGGER.fine(e.getMessage());

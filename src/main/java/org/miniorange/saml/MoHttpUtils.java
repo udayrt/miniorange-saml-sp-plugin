@@ -8,6 +8,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.config.Registry;
 import org.apache.http.config.RegistryBuilder;
 import org.apache.http.conn.HttpClientConnectionManager;
+import org.apache.http.conn.routing.HttpRoutePlanner;
 import org.apache.http.conn.socket.ConnectionSocketFactory;
 import org.apache.http.conn.socket.PlainConnectionSocketFactory;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
@@ -37,7 +38,9 @@ public class MoHttpUtils {
 	public static CloseableHttpClient getHttpClient() throws KeyStoreException, NoSuchAlgorithmException,
 			KeyManagementException {
 		HttpClientBuilder builder = HttpClientBuilder.create();
-		SSLContext sslContext = SSLContexts.custom().loadTrustMaterial(null, (arg0, arg1) -> true).build();
+
+		SSLContext sslContext = SSLContexts.custom().build();
+
 		SSLConnectionSocketFactory sslConnectionFactory = new SSLConnectionSocketFactory(sslContext,
 				SSLConnectionSocketFactory.getDefaultHostnameVerifier());
 		builder.setSSLSocketFactory(sslConnectionFactory);
@@ -51,10 +54,10 @@ public class MoHttpUtils {
 
 		builder.setConnectionManager(ccm);
 
-		//return builder.build();
-		SystemDefaultRoutePlanner routePlanner = new SystemDefaultRoutePlanner(ProxySelector.getDefault());
-		CloseableHttpClient httpclient = HttpClients.custom().setRoutePlanner(routePlanner).setConnectionManager(ccm)
-				.build();
+		HttpRoutePlanner routePlanner = new SystemDefaultRoutePlanner(ProxySelector.getDefault());
+		builder.setRoutePlanner(routePlanner);
+
+		CloseableHttpClient httpclient = builder.build();
 		return httpclient;
 	}
 
@@ -85,13 +88,13 @@ public class MoHttpUtils {
 					return StringUtils.EMPTY;
 				}
 			} catch (ClientProtocolException e) {
-				throw new RuntimeException(e);
+				return StringUtils.EMPTY;
 			}
 		} catch (IOException e) {
 			LOGGER.fine("An exception occurred while sending get request: " + e.getMessage());
-			throw new MoPluginException(MoPluginException.PluginErrorCode.UNKNOWN, e.getMessage(), e);
+			return StringUtils.EMPTY;
 		} catch (KeyStoreException | NoSuchAlgorithmException | KeyManagementException e) {
-			throw new RuntimeException(e);
+			return StringUtils.EMPTY;
 		}
 	}
 }

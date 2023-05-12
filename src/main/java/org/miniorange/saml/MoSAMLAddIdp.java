@@ -388,10 +388,22 @@ public class MoSAMLAddIdp extends SecurityRealm {
 
     public void doMoSamlLogin(final StaplerRequest request, final StaplerResponse response, @Header("Referer") final String referer) {
         recreateSession(request);
+
+        String redirectOnFinish = StringUtils.EMPTY;
+        if(StringUtils.isEmpty(request.getQueryString())){
+            redirectOnFinish = calculateSafeRedirect(referer);
+        }
+        else{
+            redirectOnFinish = request.getQueryString();
+        }
+        HttpSession session = request.getSession();
+
+
+        LOGGER.fine("relay state " + redirectOnFinish);
+
         String base64Nonce = createNonce();
         nonceSet.add(base64Nonce);
-        HttpSession session = request.getSession();
-        String relayState = StringUtils.substringAfter(calculateSafeRedirect(referer), "from=");
+        String relayState = StringUtils.substringAfter(calculateSafeRedirect(redirectOnFinish), "from=");
         session.setAttribute(MoSAMLUtils.RELAY_STATE_PARAM, relayState);
         LOGGER.fine("in doMoSamlLogin");
         MoSAMLManager moSAMLManager = new MoSAMLManager(getMoSAMLPluginSettings());
@@ -696,6 +708,8 @@ public class MoSAMLAddIdp extends SecurityRealm {
     @RequirePOST
     public HttpResponse doMoSamlAuth(final StaplerRequest request, final StaplerResponse response) throws IOException {
         String redirectUrl = StringUtils.EMPTY;
+        boolean checkIdpInitiatedFlow = false;
+
         String nonce = request.getParameter(MoSAMLUtils.RELAY_STATE_PARAM);
 
         // Remove the nonce value from the HashSet to prevent replay attacks
@@ -703,7 +717,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
             nonceSet.remove(nonce);
         } else {
             LOGGER.fine("Error in Nonce value, Repeated SAML response: ");
-            throw new MoSAMLException("Invalid Response", MoSAMLException.SAMLErrorCode.RESPONDER);
+            checkIdpInitiatedFlow = true;
         }
 
         String relayState = (String) request.getSession().getAttribute(MoSAMLUtils.RELAY_STATE_PARAM);
@@ -720,29 +734,33 @@ public class MoSAMLAddIdp extends SecurityRealm {
         String username = "";
         String email = "";
         MoSAMLPluginSettings settings = getMoSAMLPluginSettings();
-        MoSAMLResponse MoSAMLResponse ;
+        MoSAMLResponse moSAMLResponse ;
         MoSAMLManager moSAMLManager = new MoSAMLManager(getMoSAMLPluginSettings());
         MoSAMLTemplateManager moSAMLTemplateManager = new MoSAMLTemplateManager(getMoSAMLPluginSettings());
 
         try {
-            MoSAMLResponse = moSAMLManager.readSAMLResponse(request, response,settings);
+            moSAMLResponse = moSAMLManager.readSAMLResponse(request, response,settings);
+
+            if(checkIdpInitiatedFlow && moSAMLResponse.getInResponseTo() != null ){
+                throw new MoSAMLException("Invalid Response", MoSAMLException.SAMLErrorCode.RESPONDER);
+            }
 
             if (StringUtils.contains(relayState, "testidpconfiguration")) {
                 LOGGER.fine("Showing Test Configuration Result");
-                moSAMLTemplateManager.showTestConfigurationResult(MoSAMLResponse, request, response, null);
+                moSAMLTemplateManager.showTestConfigurationResult(moSAMLResponse, request, response, null);
                 return null;
             }
             LOGGER.fine("Not showing test config");
 
-            if (MoSAMLResponse.getAttributes().get(settings.getUsernameAttribute()) != null
-                    && MoSAMLResponse.getAttributes().get(settings.getUsernameAttribute()).length == 1) {
-                username = MoSAMLResponse.getAttributes().get(settings.getUsernameAttribute())[0];
+            if (moSAMLResponse.getAttributes().get(settings.getUsernameAttribute()) != null
+                    && moSAMLResponse.getAttributes().get(settings.getUsernameAttribute()).length == 1) {
+                username = moSAMLResponse.getAttributes().get(settings.getUsernameAttribute())[0];
                 username = loadUserName(username);
             }
 
-            if (MoSAMLResponse.getAttributes().get(settings.getEmailAttribute()) != null
-                    && MoSAMLResponse.getAttributes().get(settings.getEmailAttribute()).length == 1) {
-                email = MoSAMLResponse.getAttributes().get(settings.getEmailAttribute())[0];
+            if (moSAMLResponse.getAttributes().get(settings.getEmailAttribute()) != null
+                    && moSAMLResponse.getAttributes().get(settings.getEmailAttribute()).length == 1) {
+                email = moSAMLResponse.getAttributes().get(settings.getEmailAttribute())[0];
             }
 
             LOGGER.fine("Username received: " + username + " email received = " + email);
@@ -758,7 +776,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
                     return doMoLogin(request, response, errorMessage);
                 } else if (user == null && settings.getUserCreate()) {
                     username=handleUsernameLogin(username, settings);
-                    User newUser = userCreateSAML( username, email, settings, MoSAMLResponse);
+                    User newUser = userCreateSAML( username, email, settings, moSAMLResponse);
                     if (newUser == null) {
                         LOGGER.fine("User creation Failed");
                         String errorMessage = "<div class=\"alert alert-danger\">User creation Failed. Please view logs for more information.<br>";
@@ -772,7 +790,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
 
             } else if(settings.getLoginType().equals("emailLogin") && StringUtils.isNotBlank(email)){
                 LOGGER.fine("Email Login Selected");
-                ArrayList<String> usernameList = handleEmailLogin(request, response, email, settings, MoSAMLResponse);
+                ArrayList<String> usernameList = handleEmailLogin(request, response, email, settings, moSAMLResponse);
                 if(usernameList.size() > 1){
                     LOGGER.fine("Multiple Mail Addresses");
                     String errorMessage = "<div class=\"alert alert-danger\">More than one user found with this email address.</div><br>";
@@ -782,7 +800,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
                     String errorMessage = "<div class=\"alert alert-danger\">User does not Exist</div><br>";
                     return doMoLogin(request, response, errorMessage);
                 } else if (usernameList.size()==0 && settings.getUserCreate()) {
-                    User newUser = userCreateSAML(username, email, settings, MoSAMLResponse);
+                    User newUser = userCreateSAML(username, email, settings, moSAMLResponse);
                     if (newUser == null) {
                         LOGGER.fine("User creation Failed");
                         String errorMessage = "<div class=\"alert alert-danger\">User creation Failed.<br>";
