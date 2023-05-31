@@ -15,7 +15,6 @@ import org.opensaml.xml.security.credential.UsageType;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.xml.sax.InputSource;
-
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,11 +42,13 @@ public class MoIDPMetadata {
                 this.metadata = StringUtils.trimToEmpty(metadata);
                 MoSAMLUtils.doBootstrap();
                 DOMParser parser = new DOMParser();
-                FEATURE  = "http://xml.org/sax/features/external-general-entities";
+                FEATURE = "http://apache.org/xml/features/disallow-doctype-decl";
+                parser.setFeature(FEATURE, true);
+                FEATURE = "http://xml.org/sax/features/external-general-entities";
                 parser.setFeature(FEATURE, false);
                 FEATURE = "http://xml.org/sax/features/external-parameter-entities";
                 parser.setFeature(FEATURE, false);
-                FEATURE = "http://apache.org/xml/features/disallow-doctype-decl";
+                FEATURE = "http://apache.org/xml/features/nonvalidating/load-external-dtd";
                 parser.setFeature(FEATURE, false);
                 parser.parse(new InputSource(new StringReader(this.metadata)));
                 Document document = parser.getDocument();

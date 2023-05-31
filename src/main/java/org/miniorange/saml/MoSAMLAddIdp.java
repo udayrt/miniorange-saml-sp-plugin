@@ -39,7 +39,6 @@ import java.net.URL;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.security.SecureRandom;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -67,51 +66,14 @@ import org.w3c.dom.Element;
 import static jenkins.model.Jenkins.get;
 import static org.miniorange.saml.MoHttpUtils.sendGetRequest;
 
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.CloseableHttpClient;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.KeyManagementException;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.conn.ssl.SSLContextBuilder;
-import javax.net.ssl.SSLContext;
-import javax.xml.XMLConstants;
-import javax.xml.transform.Source;
-import javax.xml.transform.stream.StreamSource;
-import javax.xml.validation.Schema;
-import javax.xml.validation.SchemaFactory;
-import javax.xml.validation.Validator;
-
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.config.RegistryBuilder;
-import org.apache.http.conn.socket.PlainConnectionSocketFactory;
-import org.apache.http.conn.socket.ConnectionSocketFactory;
-import org.apache.http.config.Registry;
-import org.apache.http.impl.conn.BasicHttpClientConnectionManager;
-import org.apache.http.conn.HttpClientConnectionManager;
-import org.apache.http.impl.conn.SystemDefaultRoutePlanner;
-import java.net.ProxySelector;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
-
 public class MoSAMLAddIdp extends SecurityRealm {
 
     private static final Logger LOGGER = Logger.getLogger(MoSAMLAddIdp.class.getName());
     public static final String MO_SAML_SP_AUTH_URL = "securityRealm/moSamlAuth";
-    public static final String DEFAULT_CUSTOMER_KEY="16555";
-    public static final String DEFAULT_API_KEY="fFd2XcvTGDemZvbw1bcUesNJWEqKbbUq";
-    public static final String AUTH_BASE_URL = "https://auth.miniorange.com/moas";
-    public static final String NOTIFY_API = AUTH_BASE_URL + "/api/notify/send";
     public static final String MO_SAML_JENKINS_LOGIN_ACTION = "securityRealm/moLoginAction";
     public static final String MO_SAML_SSO_FORCE_STOP = "securityRealm/moSAMLSingleSignOnForceStop";
     public static final String MO_SAML_SP_METADATA_URL = "securityRealm/mospmetadata";
-    public static final String MO_SAML_SP_CERTIFCATE_DOWNLOAD = "securityRealm/downloadCertificate";
-
-    public static final String MO_SAML_SSO_LOGIN_ACTION = "securityRealm/moSamlLogin";
-
-
     private static final String LOGIN_TEMPLATE_PATH = "/templates/mosaml_login_page_template.html";
-    private static final String AUTO_REDIRECT_TO_IDP_TEMPLATE_PATH = "/templates/AutoRedirectToIDPTemplate.html";
     private static final String REFERER_ATTRIBUTE = MoSAMLAddIdp.class.getName() + ".referer";
 
 
@@ -854,6 +816,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         try {
                 new_user = User.getById(username, true);
                 LOGGER.fine("Updating user attributes");
+
                 attributeUpdate(settings, new_user, moSAMLResponse,settings.getLoginType());
 
                 if(new_user!=null ){
