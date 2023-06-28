@@ -19,6 +19,8 @@ import org.kohsuke.stapler.interceptor.RequirePOST;
 
 import java.io.*;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.logging.Logger;
 
 import static jenkins.model.Jenkins.get;
@@ -81,27 +83,35 @@ public class MoPluginConfigView extends ManagementLink implements Describable<Mo
         return "Secure Single Sign-On (SSO) solution that allows user to login to their apps using   IDP credentials by SAML Authentication.";
     }
 
+    @SuppressWarnings("unused")
     public void doDownload(StaplerRequest req, StaplerResponse rsp) throws IOException {
 
-        rsp.setContentType("text/plain");
+        Jenkins.get().checkPermission(Jenkins.ADMINISTER);
         rsp.setContentType("application/octet-stream");
         rsp.setHeader("Content-Disposition", "attachment; filename=MoSamlConfiguration.json");
 
-        SecurityRealm realm =  get().getSecurityRealm();
-        String content = realm.toString();
-        File MoSamlConfiguration = new File("MoSamlConfiguration.json");
-        try(OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(MoSamlConfiguration), Charset.forName("UTF-8")) ){
-            PrintWriter printWriter= new PrintWriter(writer);
-            printWriter.println(content);
-            printWriter.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        SecurityRealm realm = get().getSecurityRealm();
+        if( realm instanceof MoSAMLAddIdp){
 
-        FileInputStream in = new FileInputStream(MoSamlConfiguration);
-        IOUtils.copy(in, rsp.getOutputStream());
-        in.close();
-        rsp.getOutputStream().close();
+            String content = realm.toString();
+            File MoSamlConfiguration = new File("MoSamlConfiguration.json");
+
+            try (OutputStreamWriter writer = new OutputStreamWriter(Files.newOutputStream(MoSamlConfiguration.toPath()), StandardCharsets.UTF_8)) {
+                try (PrintWriter printWriter = new PrintWriter(writer)) {
+                    printWriter.println(content);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            try (FileInputStream in = new FileInputStream(MoSamlConfiguration)) {
+                IOUtils.copy(in, rsp.getOutputStream());
+            } finally {
+                if (MoSamlConfiguration.exists()) {
+                    MoSamlConfiguration.delete();
+                }
+            }
+        }
     }
 
     public String getBaseUrl() {
