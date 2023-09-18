@@ -1,50 +1,57 @@
 package org.miniorange.saml;
 
 
+import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
-import hudson.model.Describable;
-import hudson.model.Descriptor;
 import hudson.model.ManagementLink;
 import hudson.security.SecurityRealm;
 import hudson.util.FormApply;
 import jenkins.model.Jenkins;
+import net.sf.json.JSONObject;
+import org.apache.commons.fileupload.FileItem;
+import org.apache.commons.fileupload.FileUploadException;
+import org.apache.commons.fileupload.disk.DiskFileItemFactory;
+import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.output.FileWriterWithEncoding;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
+import javax.servlet.ServletException;
 import java.io.*;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.List;
 import java.util.logging.Logger;
 
 import static jenkins.model.Jenkins.get;
 
 @Extension
-public class MoPluginConfigView extends ManagementLink implements Describable<MoPluginConfigView> {
-
-
+public class MoPluginConfigView extends ManagementLink {
     private static final Logger LOGGER = Logger.getLogger(MoPluginConfigView.class.getName());
 
     @RequirePOST
     @Restricted(NoExternalUse.class)
+    @SuppressWarnings("unused")
     public void doSaveConfiguration(StaplerRequest request, StaplerResponse response) throws Exception {
         Jenkins.get().checkPermission(Jenkins.ADMINISTER);
-        MoSAMLAddIdp.DESCRIPTOR.doRealmSubmit(request, response);
+        request.setCharacterEncoding("UTF-8");
+        net.sf.json.JSONObject json = request.getSubmittedForm();
+        MoSAMLAddIdp.DESCRIPTOR.doRealmSubmit(request, response, json);
         FormApply.success(request.getContextPath() + "/").generateResponse(request, response, null);
     }
 
-    public @NonNull String getCategoryName() {
+    @NonNull
+    public String getCategoryName() {
         return "SECURITY";
     }
 
 
-    @edu.umd.cs.findbugs.annotations.CheckForNull
+    @CheckForNull
+    @SuppressWarnings("unused")
     public SecurityRealm getRealm() {
         SecurityRealm realm = Jenkins.get().getSecurityRealm();
         if (realm instanceof MoSAMLAddIdp) {
@@ -114,31 +121,23 @@ public class MoPluginConfigView extends ManagementLink implements Describable<Mo
         }
     }
 
-    public String getBaseUrl() {
-        String rootURL = get().getRootUrl();
-        if (rootURL.endsWith("/")) {
-            rootURL = rootURL.substring(0, rootURL.length() - 1);
+    @RequirePOST
+    @SuppressWarnings("unused")
+    public void doUploadSamlConfigJson(StaplerRequest req, StaplerResponse rsp) throws IOException, FileUploadException, ServletException {
+        Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+        try {
+            File tmpDir = Files.createTempDirectory("uploadDir").toFile();
+            ServletFileUpload upload = new ServletFileUpload(new DiskFileItemFactory(DiskFileItemFactory.DEFAULT_SIZE_THRESHOLD, tmpDir));
+            List<FileItem> items = upload.parseRequest(req);
+            FileItem fileItem = items.get(0);
+            String fileContent = fileItem.getString();
+            JSONObject json = JSONObject.fromObject(fileContent);
+            MoSAMLAddIdp.DESCRIPTOR.doRealmSubmit(req, rsp, json);
+        } catch(Exception e) {
+            LOGGER.fine("Error occur while uploading Saml config file: " + e.getMessage());
         }
-        return rootURL;
+        FormApply.success("./").generateResponse(req, rsp, null);
     }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public Descriptor<MoPluginConfigView> getDescriptor() {
-        Jenkins jenkins = Jenkins.get();
-
-        if (jenkins == null) {
-            throw new IllegalStateException("Jenkins has not been started");
-        }
-        return jenkins.getDescriptorOrDie(getClass());
-    }
-
-    @Extension
-    public static final class DescriptorImpl extends Descriptor<MoPluginConfigView> {
-        public DescriptorImpl() {
-        }
-    }
-
 
 }
 

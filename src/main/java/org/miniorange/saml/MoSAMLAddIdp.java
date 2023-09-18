@@ -72,7 +72,6 @@ public class MoSAMLAddIdp extends SecurityRealm {
     public static final String MO_SAML_SP_AUTH_URL = "securityRealm/moSamlAuth";
     public static final String MO_SAML_JENKINS_LOGIN_ACTION = "securityRealm/moLoginAction";
     public static final String MO_SAML_SSO_FORCE_STOP = "securityRealm/moSAMLSingleSignOnForceStop";
-    public static final String MO_SAML_SP_METADATA_URL = "securityRealm/mospmetadata";
     private static final String LOGIN_TEMPLATE_PATH = "/templates/mosaml_login_page_template.html";
     private static final String REFERER_ATTRIBUTE = MoSAMLAddIdp.class.getName() + ".referer";
 
@@ -182,41 +181,6 @@ public class MoSAMLAddIdp extends SecurityRealm {
     }
 
     @Override
-    public String toString() {
-        return "{" +
-                "\"spEntityId:\": \"" + getBaseUrl() + '\"' +
-                ", \"audienceURI:\": \"" + getBaseUrl() + '\"' +
-                ", \"acsURL:\": \"" + getBaseUrl() + "securityRealm/moSamlAuth" + '\"' +
-                ", \"spLogoutURL:\": \"" + getBaseUrl() + "securityRealm/logout" + '\"' +
-                ", \"idpEntityId\": \"" + idpEntityId + '\"' +
-                ", \"ssoUrl\": \"" + ssoUrl + '\"' +
-                ", \"metadataUrl\": \"" + metadataUrl + '\"' +
-                ", \"metadataFilePath\": \"" + metadataFilePath + '\"' +
-                ", \"publicx509Certificate\": \"" + publicx509Certificate + '\"' +
-                ", \"usernameAttribute\": \"" + usernameAttribute + '\"' +
-                ", \"fullnameAttribute\": \"" + fullnameAttribute + '\"' +
-                ", \"usernameCaseConversion\": \"" + usernameCaseConversion + '\"' +
-                ", \"userAttributeUpdate\": \"" + userAttributeUpdate + '\"' +
-                ", \"emailAttribute\": \"" + emailAttribute + '\"' +
-                ", \"nameIDFormat\": \"" + nameIDFormat + '\"' +
-                ", \"sslUrl\": \"" + sslUrl + '\"' +
-                ", \"loginType\": \"" + loginType + '\"' +
-                ", \"regexPattern\": \"" + regexPattern + '\"' +
-                ", \"enableRegexPattern\": \"" + enableRegexPattern + '\"' +
-                ", \"signedRequest\": \"" + signedRequest + '\"' +
-                ", \"splitnameAttribute\": \"" + splitnameAttribute + '\"' +
-                ", \"userCreate\": \"" + userCreate + '\"' +
-                ", \"forceAuthn\": \"" + forceAuthn + '\"' +
-                ", \"ssoBindingType\": \"" + ssoBindingType + '\"' +
-                ", \"sloBindingType\": \"" + sloBindingType + '\"' +
-                ", \"samlCustomAttributes\": \"" + samlCustomAttributes + '\"' +
-                ", \"newUserGroup\": \"" + newUserGroup + '\"' +
-                ", \"authnContextClass\": \"" + authnContextClass + '\"' +
-                ", \"disableDefaultLogin\": \"" + "false" + '\"' +
-                '}';
-    }
-
-    @Override
     public String getLoginUrl() {
         return "securityRealm/moLogin";
     }
@@ -257,6 +221,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
     }
 
     @RequirePOST
+    @SuppressWarnings("unused")
     public void doMoLoginAction(final StaplerRequest request, final StaplerResponse response) {
         String referer = (String) request.getSession().getAttribute(REFERER_ATTRIBUTE);
         String redirectOnFinish = calculateSafeRedirect(referer);
@@ -348,6 +313,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         return uuidAsString;
     }
 
+    @SuppressWarnings("unused")
     public void doMoSamlLogin(final StaplerRequest request, final StaplerResponse response, @Header("Referer") final String referer) {
         recreateSession(request);
 
@@ -368,7 +334,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         String relayState = StringUtils.substringAfter(calculateSafeRedirect(redirectOnFinish), "from=");
         session.setAttribute(MoSAMLUtils.RELAY_STATE_PARAM, relayState);
         LOGGER.fine("in doMoSamlLogin");
-        MoSAMLManager moSAMLManager = new MoSAMLManager(getMoSAMLPluginSettings());
+        MoSAMLManager moSAMLManager = new MoSAMLManager();
         moSAMLManager.createAuthnRequestAndRedirect(request, response, base64Nonce, getMoSAMLPluginSettings());
     }
 
@@ -376,16 +342,8 @@ public class MoSAMLAddIdp extends SecurityRealm {
         return get().getRootUrl();
     }
 
-    private String getErrorUrl() {
-        return get().getRootUrl() + MO_SAML_JENKINS_LOGIN_ACTION;
-    }
-
-    public String spMetadataURL() {
-        return get().getRootUrl() + MO_SAML_SP_METADATA_URL;
-    }
-
-
     @RequirePOST
+    @SuppressWarnings("unused")
     public void doMoSAMLSingleSignOnForceStop(final StaplerRequest request, final StaplerResponse response) {
         HttpSession session= request.getSession(false);
         if(session!=null){
@@ -446,6 +404,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         }
     }
 
+    @SuppressWarnings("unused")
     public void doMospmetadata(final StaplerRequest request, final StaplerResponse response) {
         LOGGER.fine("Printing SP Metadata");
         HttpSession session=request.getSession(false);
@@ -468,7 +427,8 @@ public class MoSAMLAddIdp extends SecurityRealm {
             return;
         }
     }
-    public  void doDownloadCertificate(final StaplerRequest request, final StaplerResponse response) throws Exception {
+    @SuppressWarnings("unused")
+    public  void doDownloadCertificate(final StaplerRequest request, final StaplerResponse response){
         LOGGER.fine("Downloading SP Certificate.");
         try {
             MoSAMLPluginSettings moSAMLPluginSettings = getMoSAMLPluginSettings();
@@ -668,6 +628,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         return metadataUrlValues;
     }
     @RequirePOST
+    @SuppressWarnings("unused")
     public HttpResponse doMoSamlAuth(final StaplerRequest request, final StaplerResponse response) throws IOException {
         String redirectUrl = StringUtils.EMPTY;
         boolean checkIdpInitiatedFlow = false;
@@ -697,7 +658,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         String email = "";
         MoSAMLPluginSettings settings = getMoSAMLPluginSettings();
         MoSAMLResponse moSAMLResponse ;
-        MoSAMLManager moSAMLManager = new MoSAMLManager(getMoSAMLPluginSettings());
+        MoSAMLManager moSAMLManager = new MoSAMLManager();
         MoSAMLTemplateManager moSAMLTemplateManager = new MoSAMLTemplateManager(getMoSAMLPluginSettings());
 
         try {
@@ -787,9 +748,17 @@ public class MoSAMLAddIdp extends SecurityRealm {
             LOGGER.fine("Invalid response");
             String errorMessage = "<div class=\"alert alert-danger\">Error occurred while reading response.</div><br>";
             return doMoLogin(request, response, errorMessage);
-
         }
+    }
 
+    private String loadUserName(String username) {
+        MoSAMLPluginSettings settings = getMoSAMLPluginSettings();
+        if ("lowercase".compareTo(settings.getUsernameCaseConversion()) == 0) {
+            username = username.toLowerCase();
+        } else if ("uppercase".compareTo(settings.getUsernameCaseConversion()) == 0) {
+            username = username.toUpperCase();
+        }
+        return username;
     }
 
     private ArrayList<String> handleEmailLogin(StaplerRequest request, StaplerResponse response, String email, MoSAMLPluginSettings settings, MoSAMLResponse moSAMLResponse) {
@@ -851,7 +820,6 @@ public class MoSAMLAddIdp extends SecurityRealm {
             for (String name: responseSAMLAttributes.keySet()){
                 String key = name.toString();
                 String value = Arrays.toString(responseSAMLAttributes.get(name));
-                System.out.println(key + " " + value);
             }
 
             for (MoAttributeEntry attributeEntry : getSamlCustomAttributes()) {
@@ -949,26 +917,27 @@ public class MoSAMLAddIdp extends SecurityRealm {
             return doMoLogin(request,response,errorMessage);
         }
     }
-
+    @SuppressWarnings("unused")
     public String getMetadataUrl() {
         return metadataUrl;
     }
-
+    @SuppressWarnings("unused")
     public String getMetadataFilePath() {
         return metadataFilePath;
     }
+    @SuppressWarnings("unused")
     public String getIdpEntityId() {
         return idpEntityId;
     }
-    
+    @SuppressWarnings("unused")
     public String getSsoUrl() {
         return ssoUrl;
     }
-
+    @SuppressWarnings("unused")
     public String getPublicx509Certificate() {
         return publicx509Certificate;
     }
-
+    @SuppressWarnings("unused")
     public String getUsernameAttribute() {
         if (StringUtils.isEmpty(usernameAttribute)) {
             return "NameID";
@@ -976,7 +945,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
             return usernameAttribute;
         }
     }
-
+    @SuppressWarnings("unused")
     public String getEmailAttribute() {
         if (StringUtils.isEmpty(emailAttribute)) {
             return "NameID";
@@ -998,112 +967,42 @@ public class MoSAMLAddIdp extends SecurityRealm {
         }
         request.getSession(true);
     }
-
+    @SuppressWarnings("unused")
     public String getNameIDFormat() {
         return nameIDFormat;
     }
 
-    public Boolean getSignedRequest() {
-        return BooleanUtils.toBooleanDefaultIfNull(signedRequest, true);
-    }
-
-    public Boolean getSplitnameAttribute() {
-        return BooleanUtils.toBooleanDefaultIfNull(splitnameAttribute, false);
-    }
+    @SuppressWarnings("unused")
     public Boolean getUserCreate() {
         return userCreate;
     }
 
+    @SuppressWarnings("unused")
     public Boolean getForceAuthn(){ return forceAuthn; }
-    public String getSslUrl() {
-        return sslUrl;
-    }
 
-    public String getLoginType() {
-        return loginType;
-    }
-
+    @SuppressWarnings("unused")
     public String getRegexPattern() {
         return regexPattern;
     }
 
+    @SuppressWarnings("unused")
     public Boolean getEnableRegexPattern() {
         return enableRegexPattern;
     }
 
+    @SuppressWarnings("unused")
     public String getSsoBindingType() {
         return ssoBindingType;
     }
 
-    public String getSloBindingType() {
-        return sloBindingType;
-    }
-
-
-    public String getsPEntityID() {
-        String rootURL= Jenkins.get().getRootUrl();
-        if(rootURL.endsWith("/")){
-            rootURL= rootURL.substring(0,rootURL.length()-1);
-        }
-        return rootURL;
-    }
-
-    public String getAudienceURI() {
-        String rootURL= Jenkins.get().getRootUrl();
-        if(rootURL.endsWith("/")){
-            rootURL= rootURL.substring(0,rootURL.length()-1);
-        }
-        return rootURL;
-    }
-
-    public String getAcsURL() {
-        String rootURL= Jenkins.get().getRootUrl();
-        if(rootURL.endsWith("/")){
-            rootURL= rootURL.substring(0,rootURL.length()-1);
-        }
-        return rootURL+"/securityRealm/moSamlAuth";
-    }
-
-    public String getSpLogoutURL() {
-        String rootURL= Jenkins.get().getRootUrl();
-        if(rootURL.endsWith("/")){
-            rootURL= rootURL.substring(0,rootURL.length()-1);
-        }
-        return rootURL+"/securityRealm/logout";
-    }
-    public String getBackdoorURL() {
-        String rootURL= Jenkins.get().getRootUrl();
-        if(rootURL.endsWith("/")){
-            rootURL= rootURL.substring(0,rootURL.length()-1);
-        }
-        return rootURL+"/securityRealm/moLoginAction";
-    }
-
+    @SuppressWarnings("unused")
     public String getUsernameCaseConversion() {
         return usernameCaseConversion;
     }
-    public String getFullnameAttribute() {
-        return fullnameAttribute;
-    }
 
-    public Boolean getUserAttributeUpdate() {
-        return userAttributeUpdate;
-    }
-
-    public String getNewUserGroup() {
-        return newUserGroup;
-    }
-
-    public void setNewUserGroup(String newUserGroup) {
-        this.newUserGroup = newUserGroup;
-    }
-
+    @SuppressWarnings("unused")
     public String getAuthnContextClass() {
         return authnContextClass;
-    }
-
-    public void setAuthnContextClass(String authnContextClass) {
-        this.authnContextClass = authnContextClass;
     }
 
     @NonNull
@@ -1114,24 +1013,48 @@ public class MoSAMLAddIdp extends SecurityRealm {
         return samlCustomAttributes;
     }
 
-    public void setSamlCustomAttribute(List<MoAttributeEntry> samlCustomAttributes) {
-        this.samlCustomAttributes = samlCustomAttributes;
-    }
-
-
     private MoSAMLPluginSettings getMoSAMLPluginSettings() {
-        MoSAMLPluginSettings settings = new MoSAMLPluginSettings(idpEntityId, ssoUrl, metadataUrl,
-                metadataFilePath, publicx509Certificate, usernameCaseConversion, usernameAttribute, emailAttribute, nameIDFormat,
-                sslUrl, loginType, regexPattern, enableRegexPattern, signedRequest, userCreate, forceAuthn, ssoBindingType, sloBindingType, fullnameAttribute, samlCustomAttributes, userAttributeUpdate,
-                newUserGroup,authnContextClass);
+        MoSAMLPluginSettings settings = new MoSAMLPluginSettings(idpEntityId, ssoUrl, publicx509Certificate, usernameCaseConversion, usernameAttribute, emailAttribute, nameIDFormat,
+                loginType, regexPattern, enableRegexPattern, signedRequest, userCreate, forceAuthn, ssoBindingType,samlCustomAttributes,authnContextClass);
         return settings;
     }
 
-    private MoSAMLManager getMoSAMLManager() {
-        MoSAMLManager moSAMLManager = new MoSAMLManager(getMoSAMLPluginSettings());
-        return moSAMLManager;
-    }
     public static final MoSAMLAddIdp.DescriptorImpl DESCRIPTOR = new MoSAMLAddIdp.DescriptorImpl();
+
+    @Override
+    public String toString() {
+        return "{" +
+                "\"spEntityId:\": \"" + getBaseUrl() + '\"' +
+                ", \"audienceURI:\": \"" + getBaseUrl() + '\"' +
+                ", \"acsURL:\": \"" + getBaseUrl() + "securityRealm/moSamlAuth" + '\"' +
+                ", \"spLogoutURL:\": \"" + getBaseUrl() + "securityRealm/logout" + '\"' +
+                ", \"idpEntityId\": \"" + idpEntityId + '\"' +
+                ", \"ssoUrl\": \"" + ssoUrl + '\"' +
+                ", \"metadataUrl\": \"" + metadataUrl + '\"' +
+                ", \"metadataFilePath\": \"" + metadataFilePath + '\"' +
+                ", \"publicx509Certificate\": \"" + publicx509Certificate + '\"' +
+                ", \"usernameAttribute\": \"" + usernameAttribute + '\"' +
+                ", \"fullnameAttribute\": \"" + fullnameAttribute + '\"' +
+                ", \"usernameCaseConversion\": \"" + usernameCaseConversion + '\"' +
+                ", \"userAttributeUpdate\": \"" + userAttributeUpdate + '\"' +
+                ", \"emailAttribute\": \"" + emailAttribute + '\"' +
+                ", \"nameIDFormat\": \"" + nameIDFormat + '\"' +
+                ", \"sslUrl\": \"" + sslUrl + '\"' +
+                ", \"loginType\": \"" + loginType + '\"' +
+                ", \"regexPattern\": \"" + regexPattern + '\"' +
+                ", \"enableRegexPattern\": \"" + enableRegexPattern + '\"' +
+                ", \"signedRequest\": \"" + signedRequest + '\"' +
+                ", \"splitnameAttribute\": \"" + splitnameAttribute + '\"' +
+                ", \"userCreate\": \"" + userCreate + '\"' +
+                ", \"forceAuthn\": \"" + forceAuthn + '\"' +
+                ", \"ssoBindingType\": \"" + ssoBindingType + '\"' +
+                ", \"sloBindingType\": \"" + sloBindingType + '\"' +
+                ", \"samlCustomAttributes\":"  + samlCustomAttributes +
+                ", \"newUserGroup\": \"" + newUserGroup + '\"' +
+                ", \"authnContextClass\": \"" + authnContextClass + '\"' +
+                ", \"disableDefaultLogin\": \"" + "false" + '\"' +
+                '}';
+    }
 
     @Extension
     public static final class DescriptorImpl extends Descriptor<SecurityRealm> {
@@ -1186,9 +1109,12 @@ public class MoSAMLAddIdp extends SecurityRealm {
                 List<MoAttributeEntry> attributeList  = new ArrayList<MoAttributeEntry>();
 
                 try{
-                    String samlCustomAttributeString = (formData.get("samlCustomAttribute") != null ? StringUtils.defaultIfBlank(formData.get("samlCustomAttribute").toString(), "") : "");
-                    if(samlCustomAttributeString.startsWith("[")) {
-                        JSONArray jsonArray = formData.getJSONArray("samlCustomAttribute");
+                    String samlCustomAttributesString = (formData.get("samlCustomAttributes") != null ? StringUtils.defaultIfBlank(formData.get("samlCustomAttributes").toString(), "") : "");
+                    if(samlCustomAttributesString.startsWith("\"")){
+                        samlCustomAttributesString = samlCustomAttributesString.substring(1, samlCustomAttributesString.length() - 1);
+                    }
+                    if(samlCustomAttributesString.startsWith("[")) {
+                        JSONArray jsonArray = formData.getJSONArray("samlCustomAttributes");
                         Iterator iterator = jsonArray.iterator();
                         while (iterator.hasNext()) {
                             net.sf.json.JSONObject jsonObject = (net.sf.json.JSONObject) iterator.next();
@@ -1196,8 +1122,8 @@ public class MoSAMLAddIdp extends SecurityRealm {
                             attributeList.add(attribute);
                         }
                     }
-                    else if (samlCustomAttributeString.startsWith("{")){
-                        net.sf.json.JSONObject jsonObject = formData.getJSONObject("samlCustomAttribute");
+                    else if (samlCustomAttributesString.startsWith("{")){
+                        net.sf.json.JSONObject jsonObject = formData.getJSONObject("samlCustomAttributes");
                         MoAttribute attribute = new MoAttribute(jsonObject.getString("name"), jsonObject.getString("displayName"));
                         attributeList.add(attribute);
                     }
@@ -1265,12 +1191,8 @@ public class MoSAMLAddIdp extends SecurityRealm {
         }
         @RequirePOST
         @Restricted(NoExternalUse.class)
-        public void doRealmSubmit(StaplerRequest req, StaplerResponse rsp) throws ServletException, IOException, ServletException {
-            LOGGER.log(Level.FINE, "Submitting the realm");
+        public void doRealmSubmit(StaplerRequest req, StaplerResponse rsp, net.sf.json.JSONObject json) throws ServletException, IOException, ServletException {
             checkAdminPermission();
-
-            req.setCharacterEncoding("UTF-8");
-            net.sf.json.JSONObject json = req.getSubmittedForm();
             LOGGER.log(Level.FINE, "Saving realm values : " + json.toString());
             SecurityRealm Realm = this.newInstance(req, json);
             Jenkins.get().setSecurityRealm(Realm);
@@ -1278,6 +1200,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         }
 
         @POST
+        @SuppressWarnings("unused")
         public FormValidation doCheckIdpEntityId(@QueryParameter String idpEntityId) {
             checkAdminPermission();
             if (StringUtils.isEmpty(idpEntityId)) {
@@ -1287,6 +1210,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         }
 
         @POST
+        @SuppressWarnings("unused")
         public FormValidation doCheckSsoUrl(@QueryParameter String ssoUrl) {
             checkAdminPermission();
             if (StringUtils.isEmpty(ssoUrl)) {
@@ -1301,6 +1225,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         }
 
         @POST
+        @SuppressWarnings("unused")
         public FormValidation doCheckUsernameAttribute(@QueryParameter String usernameAttribute, @QueryParameter String loginType) {
             checkAdminPermission();
             if (StringUtils.isEmpty(usernameAttribute) && loginType.equals("usernameLogin")) {
@@ -1310,6 +1235,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         }
 
         @POST
+        @SuppressWarnings("unused")
         public FormValidation doCheckEmailAttribute(@QueryParameter String emailAttribute, @QueryParameter String loginType) {
             checkAdminPermission();
             if (StringUtils.isEmpty(emailAttribute) && loginType.equals("emailLogin")) {
@@ -1319,6 +1245,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         }
 
         @POST
+        @SuppressWarnings("unused")
         public FormValidation doCheckPublicx509Certificate(@QueryParameter String publicx509Certificate) {
             checkAdminPermission();
             if (StringUtils.isEmpty(publicx509Certificate)) {
@@ -1339,6 +1266,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
 
 
         @POST
+        @SuppressWarnings("unused")
         public FormValidation doCheckRegexPattern(@QueryParameter Boolean enableRegexPattern, @QueryParameter String regexPattern) {
             checkAdminPermission();
             if (enableRegexPattern && StringUtils.isEmpty(regexPattern)) {
@@ -1349,6 +1277,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         }
 
         @POST
+        @SuppressWarnings("unused")
         public FormValidation doUserCreate(@QueryParameter Boolean userCreate, @QueryParameter String emailAttribute, @QueryParameter String usernameAttribute) {
             checkAdminPermission();
             if (userCreate && StringUtils.isEmpty(emailAttribute) && StringUtils.isEmpty(usernameAttribute)) {
@@ -1367,6 +1296,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         }
 
         @POST
+        @SuppressWarnings("unused")
         public FormValidation doCheckUserAttributeUpdate(@QueryParameter Boolean userAttributeUpdate) {
             checkAdminPermission();
             if (! userAttributeUpdate) {
@@ -1375,6 +1305,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
             return FormValidation.ok();
         }
         @POST
+        @SuppressWarnings("unused")
         public FormValidation doCheckSignedRequest(@QueryParameter Boolean signedRequest) {
             checkAdminPermission();
             if (! signedRequest) {
@@ -1384,11 +1315,13 @@ public class MoSAMLAddIdp extends SecurityRealm {
         }
 
         @POST
+        @SuppressWarnings("unused")
         public FormValidation doCheckSplitnameAttribute(@QueryParameter Boolean splitnameAttribute) {
             checkAdminPermission();
             return FormValidation.warning("Available in premium version");
         }
         @POST
+        @SuppressWarnings("unused")
         public FormValidation doCheckDisableDefaultLogin(@QueryParameter Boolean disableDefaultLogin) {
             checkAdminPermission();
             if (! disableDefaultLogin) {
@@ -1398,6 +1331,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         }
 
         @POST
+        @SuppressWarnings("unused")
         public FormValidation doPerformTestConfiguration(@QueryParameter String idpEntityId, @QueryParameter String ssoUrl, @QueryParameter String publicx509Certificate) {
             checkAdminPermission();
             if(StringUtils.isEmpty(idpEntityId) || StringUtils.isEmpty(ssoUrl) || StringUtils.isEmpty(publicx509Certificate)) {
@@ -1412,6 +1346,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
         }
 
         @POST
+        @SuppressWarnings("unused")
         public FormValidation doValidateMetadataUrl(@QueryParameter String metadataUrl) throws Exception {
             checkAdminPermission();
             String metadata = sendGetRequest(metadataUrl, null);
@@ -1424,6 +1359,7 @@ public class MoSAMLAddIdp extends SecurityRealm {
             return FormValidation.okWithMarkup("Valid metadata Url, please hit save button");
         }
         @POST
+        @SuppressWarnings("unused")
         public FormValidation doValidateMetadataFile(@QueryParameter String metadataFilePath) throws Exception {
             checkAdminPermission();
             String metadata = getMetadataFromFile(metadataFilePath);
@@ -1435,15 +1371,6 @@ public class MoSAMLAddIdp extends SecurityRealm {
             }
             return FormValidation.okWithMarkup("Validation successful, please hit save button");
         }
-    }
-    private String loadUserName(String username) {
-        MoSAMLPluginSettings settings = getMoSAMLPluginSettings();
-        if ("lowercase".compareTo(settings.getUsernameCaseConversion()) == 0) {
-            username = username.toLowerCase();
-        } else if ("uppercase".compareTo(settings.getUsernameCaseConversion()) == 0) {
-            username = username.toUpperCase();
-        }
-        return username;
     }
 
 }

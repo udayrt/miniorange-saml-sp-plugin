@@ -1,14 +1,8 @@
 package org.miniorange.saml;
 
-
-
-
 public class MoSAMLException extends RuntimeException {
-
     private SAMLErrorCode errorCode;
-
     private String message;
-
     private String resolution;
 
     public MoSAMLException(SAMLErrorCode errorCode) {
@@ -75,9 +69,6 @@ public class MoSAMLException extends RuntimeException {
         ASSERTION_NOT_SIGNED("SAML Assertion not signed by your IdP.", "Make sure your IDP is signing at least SAML " +
                 "Response or SAML Assertion."),
 
-        INVALID_CONDITIONS("Invalid Conditions in the SAML Response.", "Make sure your Server time is in sync with " +
-                "your IDP Server."),
-
         UNKNOWN("An unknown error occurred.", "Please check logs for the exact error and contact support for help."),
 
         INVALID_SAML_STATUS("Invalid SAML Status code.","The request could not be performed due to an error on the " +
@@ -93,7 +84,7 @@ public class MoSAMLException extends RuntimeException {
 
         private String resolution;
 
-        private SAMLErrorCode(String message, String resolution) {
+        SAMLErrorCode(String message, String resolution) {
             this.message = message;
             this.resolution = resolution;
         }

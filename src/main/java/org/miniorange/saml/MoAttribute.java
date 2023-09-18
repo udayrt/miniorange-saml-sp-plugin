@@ -55,8 +55,10 @@ public class MoAttribute extends MoAttributeEntry{
     }
     @Override
     public String toString() {
-        return "MoAttribute{" + "name='" + getName() + '\''
-                + ", displayAttributeName='" + getDisplayName() +
-                " '}";
+        return "{" +
+                "\"name\":" + "\"" + name  + "\"" +
+                ", \"displayName\":" +  "\"" + displayName + "\"" +
+                "}";
     }
+
 }

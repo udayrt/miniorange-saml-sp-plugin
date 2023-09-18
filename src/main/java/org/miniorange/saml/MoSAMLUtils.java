@@ -43,7 +43,6 @@ import org.opensaml.xml.signature.*;
 import org.opensaml.xml.util.Base64;
 import org.opensaml.xml.util.XMLHelper;
 import org.opensaml.xml.validation.ValidationException;
-import org.xml.sax.SAXException;
 
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.*;
@@ -82,7 +81,8 @@ public class MoSAMLUtils {
                 bootstrap = true;
                 DefaultBootstrap.bootstrap();
             } catch (ConfigurationException e) {
-                System.out.println("error");		}
+                LOGGER.fine("Failed to bootstrap, error is " + e.getMessage());
+            }
         }
     }
     public static String sanitizeText(String text) {
@@ -183,7 +183,9 @@ public class MoSAMLUtils {
             profileValidator.validate(response.getSignature());
             Credential verificationCredential = getCredential(certificate, "");
             SignatureValidator sigValidator = new SignatureValidator(verificationCredential);
+            LOGGER.fine("Validating signature.");
             sigValidator.validate(response.getSignature());
+            LOGGER.fine("Signature validated.");
             return Boolean.TRUE;
         } else {
             if (response instanceof Response) {
@@ -287,28 +289,11 @@ public class MoSAMLUtils {
         return certificate;
     }
 
-    public static Boolean isValidCertificate(String certificate) {
-        LOGGER.fine("Validating Certificate");
-        certificate = serializePublicCertificate(certificate);
-        Boolean isCertificateValid=Boolean.FALSE;
-        try {
-            CertificateFactory cf = CertificateFactory.getInstance("X.509");
-            java.security.cert.X509Certificate cert = (java.security.cert.X509Certificate) cf
-                    .generateCertificate(new ByteArrayInputStream(certificate.getBytes(StandardCharsets.UTF_8)));
-                if (cert!=null)
-                    isCertificateValid=Boolean.TRUE;
-        } catch (CertificateException e) {
-            LOGGER.fine(e.getMessage());
-        }
-        return isCertificateValid;
-    }
-
    public static String base64EncodeRequest(XMLObject request, Boolean isHttpPostBinding) throws Exception {
        LOGGER.fine("Encoding Sign Request with Base64 encoder.");
        Marshaller marshaller = Configuration.getMarshallerFactory().getMarshaller(request);
        Element authDOM = marshaller.marshall(request);
 
-       // DOM to string
        StringWriter requestWriter = new StringWriter();
        XMLHelper.writeNode(authDOM, requestWriter);
        String requestMessage = requestWriter.toString();
@@ -317,7 +302,7 @@ public class MoSAMLUtils {
            String authnRequestStr = Base64.encodeBytes(requestMessage.getBytes(StandardCharsets.UTF_8), Base64.DONT_BREAK_LINES);
            return authnRequestStr;
        }
-       // compressing
+
        Deflater deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, true);
        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
        DeflaterOutputStream deflaterOutputStream = new DeflaterOutputStream(byteArrayOutputStream, deflater);
@@ -340,33 +325,21 @@ public class MoSAMLUtils {
         signature.update(builder.toString().getBytes(StandardCharsets.UTF_8));
         byte[] signatureByteArray = signature.sign();
         String signatureBase64encodedString = Base64.encodeBytes(signatureByteArray);
-        // builder.append("&").append(SIGNATURE_PARAM).append("=").append(URLEncoder.encode(signatureBase64encodedString,
-        // "UTF-8").trim());
         return signatureBase64encodedString;
     }
     private static void disableExternalEntityParsing(DocumentBuilderFactory dbf){
         LOGGER.info("Disabling External Entity Parsing from DocumentBuilderFactory");
         String FEATURE = null;
         try {
-            // This is the PRIMARY defense. If DTDs (doctypes) are disallowed, almost all XML entity attacks are prevented
-            // Xerces 2 only - http://xerces.apache.org/xerces2-j/features.html#disallow-doctype-decl
             FEATURE = "http://apache.org/xml/features/disallow-doctype-decl";
             dbf.setFeature(FEATURE, true);
 
-            // If you can't completely disable DTDs, then at least do the following:
-            // Xerces 1 - http://xerces.apache.org/xerces-j/features.html#external-general-entities
-            // Xerces 2 - http://xerces.apache.org/xerces2-j/features.html#external-general-entities
-            // JDK7+ - http://xml.org/sax/features/external-general-entities
             FEATURE = "http://xml.org/sax/features/external-general-entities";
             dbf.setFeature(FEATURE, false);
 
-            // Xerces 1 - http://xerces.apache.org/xerces-j/features.html#external-parameter-entities
-            // Xerces 2 - http://xerces.apache.org/xerces2-j/features.html#external-parameter-entities
-            // JDK7+ - http://xml.org/sax/features/external-parameter-entities
             FEATURE = "http://xml.org/sax/features/external-parameter-entities";
             dbf.setFeature(FEATURE, false);
 
-            // Disable external DTDs as well
             FEATURE = "http://apache.org/xml/features/nonvalidating/load-external-dtd";
             dbf.setFeature(FEATURE, false);
 
@@ -374,7 +347,6 @@ public class MoSAMLUtils {
             dbf.setExpandEntityReferences(false);
 
         } catch (ParserConfigurationException e) {
-            // This should catch a failed setFeature feature
             LOGGER.fine("ParserConfigurationException was thrown. The feature '" +
                     FEATURE + "' is probably not supported by your XML processor.");
         }
@@ -408,17 +380,6 @@ public class MoSAMLUtils {
         return isCertificateValid;
     }
 
-    private static Status buildStatus(String statusCodeValue) {
-        LOGGER.fine("Building Status");
-        StatusCode statusCode = new StatusCodeBuilder().buildObject(SAMLConstants.SAML20P_NS,
-                StatusCode.DEFAULT_ELEMENT_LOCAL_NAME, "samlp");
-        statusCode.setValue(statusCodeValue);
-        Status status = new StatusBuilder().buildObject(SAMLConstants.SAML20P_NS, Status.DEFAULT_ELEMENT_LOCAL_NAME,
-                "samlp");
-        status.setStatusCode(statusCode);
-        return status;
-    }
-
    public static SignableSAMLObject signHttpPostRequest(SignableSAMLObject request, String pubicKey, String privateKey)
            throws Exception {
        LOGGER.fine("Signing HTTP Post Request. ");
@@ -426,7 +387,6 @@ public class MoSAMLUtils {
                .getBuilderFactory().getBuilder(org.opensaml.xml.signature.Signature.DEFAULT_ELEMENT_NAME)
                .buildObject(org.opensaml.xml.signature.Signature.DEFAULT_ELEMENT_NAME);
 
-       // Pass certificate type to get credentials
        Credential credential = getCredential(pubicKey, privateKey);
 
        signature.setSigningCredential(credential);
@@ -443,7 +403,6 @@ public class MoSAMLUtils {
 
        request.setSignature(signature);
 
-       // Marshalling signableXmlObject
        MarshallerFactory marshallerFactory = Configuration.getMarshallerFactory();
        Marshaller marshaller = marshallerFactory.getMarshaller(request);
        marshaller.marshall(request);
@@ -454,32 +413,8 @@ public class MoSAMLUtils {
 
    }
 
-    public static String htmlEncode(String s) {
-        if (org.apache.commons.lang3.StringUtils.isNotBlank(s)) {
-            StringBuffer encodedString = new StringBuffer("");
-            char[] chars = s.toCharArray();
-            for (char c : chars) {
-                if (c == '<') {
-                    encodedString.append("&lt;");
-                } else if (c == '>') {
-                    encodedString.append("&gt;");
-                } else if (c == '\'') {
-                    encodedString.append("&apos;");
-                } else if (c == '"') {
-                    encodedString.append("&quot;");
-                } else if (c == '&') {
-                    encodedString.append("&amp;");
-                } else {
-                    encodedString.append(c);
-                }
-            }
-            return encodedString.toString();
-        }
-        return org.apache.commons.lang3.StringUtils.EMPTY;
-    }
     public static String generateRandomAlphaNumericKey(int bytes) {
-        String randomString = RandomStringUtils.random(bytes, true, true);
-        return randomString;
+        return  RandomStringUtils.random(bytes, true, true);
     }
 
 }

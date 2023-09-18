@@ -1,0 +1,19 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
+
+    <div id="upload-saml-json-config"  class="modal">
+        <div class="modal-content upload-config-modal-top-margin">
+            <h2 class="jenkins-section__title">${%Upload SAML config Json}</h2>
+            <f:form method="post" action="uploadSamlConfigJson" name="uploadPlugin" enctype="multipart/form-data">
+                <div style="margin-bottom: 1em;">
+                    Upload the SAML configuration Json file.
+                </div>
+                <f:entry title="${%File}" field="name">
+                    <input type="file" name="my.key" jsonAware="yes" accept="application/json"/>
+                </f:entry>
+                <f:submit value="${%Upload}"/>
+            </f:form>
+
+        </div>
+    </div>
+</j:jelly>

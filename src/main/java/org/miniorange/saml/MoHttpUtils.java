@@ -14,7 +14,6 @@ import org.apache.http.conn.socket.PlainConnectionSocketFactory;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.BasicHttpClientConnectionManager;
 import org.apache.http.impl.conn.SystemDefaultRoutePlanner;
 import org.apache.http.ssl.SSLContexts;
@@ -32,8 +31,6 @@ import java.util.logging.Logger;
 public class MoHttpUtils {
 
 	private static final Logger LOGGER = Logger.getLogger(MoHttpUtils.class.getName());
-
-	public static final String CONTENT_TYPE_JSON = "application/json";
 
 	public static CloseableHttpClient getHttpClient() throws KeyStoreException, NoSuchAlgorithmException,
 			KeyManagementException {

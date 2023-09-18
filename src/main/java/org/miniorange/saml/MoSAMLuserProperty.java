@@ -17,7 +17,7 @@ specific language governing permissions and limitations
 under the License. */
 
 import edu.umd.cs.findbugs.annotations.NonNull;
-import hudson.model.Descriptor.FormException;
+import hudson.Extension;
 import hudson.model.User;
 import hudson.model.UserProperty;
 import hudson.model.UserPropertyDescriptor;
@@ -29,30 +29,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * Store custom SAMl Attributes read from SAML Response.
- *
- * @author Kuisathaverat
- */
 public class MoSAMLuserProperty extends UserProperty {
-    /**
-     * list of custom Attributes.
-     */
     List<Attribute> attributes;
 
     public static class Attribute{
 
-        /**
-         * Name of the attribute in the SAML Response.
-         */
         private final String name;
-        /**
-         * Name to display as attribute's value label on the user profile.
-         */
+
         private final String displayName;
-        /**
-         * value of the attribute.
-         */
+
         private String value;
 
         public Attribute(String name, String displayName) {
@@ -62,10 +47,6 @@ public class MoSAMLuserProperty extends UserProperty {
 
         public String getName() {
             return name;
-        }
-
-        public String getDisplayName() {
-            return displayName;
         }
 
         public String getValue() {
@@ -111,11 +92,11 @@ public class MoSAMLuserProperty extends UserProperty {
     }
 
     @Override
-    public UserProperty reconfigure(StaplerRequest req, JSONObject form) throws FormException {
+    public UserProperty reconfigure(StaplerRequest req, JSONObject form){
         return this;
     }
 
-    @hudson.Extension
+    @Extension
     public static final class DescriptorImpl extends UserPropertyDescriptor {
         public String getDisplayName() {
             return "Saml Custom Attributes ";

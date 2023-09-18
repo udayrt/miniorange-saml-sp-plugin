@@ -118,59 +118,20 @@ public class MoIDPMetadata {
         }
     }
 
-    public EntityDescriptor getEntityDescriptor() {
-        return entityDescriptor;
-    }
-
-    public void setEntityDescriptor(EntityDescriptor entityDescriptor) {
-        this.entityDescriptor = entityDescriptor;
-    }
-
     public String getEntityId() {
         return entityId;
-    }
-
-    public void setEntityId(String entityId) {
-        this.entityId = entityId;
     }
 
     public Map<String, String> getSingleSignOnServices() {
         return singleSignOnServices;
     }
 
-    public void setSingleSignOnServices(Map<String, String> singleSignOnServices) {
-        this.singleSignOnServices = singleSignOnServices;
-    }
-
     public Map<String, String> getSingleLogoutServices() {
         return singleLogoutServices;
-    }
-
-    public void setSingleLogoutServices(Map<String, String> singleLogoutServices) {
-        this.singleLogoutServices = singleLogoutServices;
     }
 
     public List<String> getSigningCertificates() {
         return signingCertificates;
     }
 
-    public void setSigningCertificates(List<String> signingCertificates) {
-        this.signingCertificates = signingCertificates;
-    }
-
-    public static String getCertificate() {
-        return certificate;
-    }
-
-    public static void setCertificate(String certificate) {
-        MoIDPMetadata.certificate = certificate;
-    }
-
-    public static String getNameIdFormat() {
-        return nameIdFormat;
-    }
-
-    public static void setNameIdFormat(String nameIdFormat) {
-        MoIDPMetadata.nameIdFormat = nameIdFormat;
-    }
 }

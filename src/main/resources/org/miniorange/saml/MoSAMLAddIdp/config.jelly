@@ -1,3 +1,4 @@
 <?jelly escape-by-default='true'?>
-<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:f="/lib/form" />
-
+<j:jelly xmlns:j="jelly:core">
+    <p>Please configure the security realm <a target="_blank" href="../MoPluginConfigView">here</a></p>
+</j:jelly>
