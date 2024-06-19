@@ -11,8 +11,6 @@ import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.FileUploadException;
-import org.apache.commons.fileupload.disk.DiskFileItemFactory;
-import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.apache.commons.io.IOUtils;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
@@ -24,7 +22,6 @@ import javax.servlet.ServletException;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.List;
 import java.util.logging.Logger;
 
 import static jenkins.model.Jenkins.get;
@@ -126,10 +123,7 @@ public class MoPluginConfigView extends ManagementLink {
     public void doUploadSamlConfigJson(StaplerRequest req, StaplerResponse rsp) throws IOException, FileUploadException, ServletException {
         Jenkins.get().checkPermission(Jenkins.ADMINISTER);
         try {
-            File tmpDir = Files.createTempDirectory("uploadDir").toFile();
-            ServletFileUpload upload = new ServletFileUpload(new DiskFileItemFactory(DiskFileItemFactory.DEFAULT_SIZE_THRESHOLD, tmpDir));
-            List<FileItem> items = upload.parseRequest(req);
-            FileItem fileItem = items.get(0);
+            FileItem fileItem = req.getFileItem("my.key");
             String fileContent = fileItem.getString();
             JSONObject json = JSONObject.fromObject(fileContent);
             MoSAMLAddIdp.DESCRIPTOR.doRealmSubmit(req, rsp, json);
