@@ -32,3 +32,11 @@ jobs:
 
     - name: list files
       run: ls -lrt target
+      
+    - name: Upload Logs
+      uses: actions/upload-artifact@v3
+      with:
+         name: Plugin-Download
+         retention-days: 5
+         path: |
+            *.hpi 
