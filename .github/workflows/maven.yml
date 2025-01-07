@@ -39,4 +39,4 @@ jobs:
          name: Plugin-Download
          retention-days: 5
          path: |
-            *.hpi 
+            target/miniorange-saml-sp.hpi
