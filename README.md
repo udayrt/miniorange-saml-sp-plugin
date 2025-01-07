@@ -1,3 +1,5 @@
+plugins\miniorange-saml-sp\WEB-INF\lib
+
 # SAML Single Sign On (SSO) for Jenkins
 
 ![image_1](docs/images/jenkins-sso.png)
